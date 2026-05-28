@@ -17,7 +17,7 @@ const UPLOAD_PATTERN = /^uploads\/([^/]+)\/([^/]+)\/original\.jpg$/;
 
 export const processUpload = onObjectFinalized(
   {
-    region: "us-central1",
+    region: "southamerica-west1",
     secrets: [OPENAI_API_KEY],
     memory: "1GiB",
     timeoutSeconds: 540,
