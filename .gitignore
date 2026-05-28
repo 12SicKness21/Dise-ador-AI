@@ -45,6 +45,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# cloud functions
+/functions/lib
+/functions/node_modules
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
