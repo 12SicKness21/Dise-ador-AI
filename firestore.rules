@@ -1,14 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Prompts: auth requerido para leer/escribir (validación de admin en código)
+
+    // Prompts: solo admin escribe; cualquier usuario autenticado puede leer
     match /prompts/{docId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.token.email == "admin@causas.com";
     }
-    // Orders: usuario lee solo los suyos; escritura solo via Admin SDK
+
+    // Orders: usuario lee solo los suyos; escritura solo via Admin SDK (Functions)
     match /orders/{orderId} {
-      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null
+                  && resource.data.uid == request.auth.uid;
       allow write: if false;
     }
   }
