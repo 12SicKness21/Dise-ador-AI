@@ -41,8 +41,16 @@ export const processUpload = onObjectFinalized(
       // Descargar la foto original
       const [imageBuffer] = await bucket.file(filePath).download();
 
-      // Obtener prompts activos
-      const prompts = await getActivePrompts(db);
+      // Leer el prompt seleccionado por el usuario
+      const orderSnap = await db.collection("orders").doc(orderId).get();
+      const selectedPromptName = orderSnap.data()?.promptName as string | undefined;
+
+      // Obtener prompts activos y filtrar al seleccionado
+      const allPrompts = await getActivePrompts(db);
+      const prompts = selectedPromptName
+        ? allPrompts.filter((p) => p.name === selectedPromptName)
+        : allPrompts;
+
       if (prompts.length === 0) {
         await setOrderError(db, orderId, "No hay prompts activos configurados.");
         return;

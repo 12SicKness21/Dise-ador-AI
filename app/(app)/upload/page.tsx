@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { onSnapshot, doc, Timestamp } from "firebase/firestore";
 import {
   Camera, ImagePlus, Download, X, Loader2,
-  Shield, LogOut, AlertCircle,
+  Shield, LogOut, AlertCircle, Check,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
@@ -16,26 +16,22 @@ import { getActivePrompts, type Prompt } from "@/lib/prompts";
 import { resolveGsUrl, downloadImage as dlImg } from "@/lib/download";
 import type { Order } from "@/lib/orders";
 
-/*
-  Paleta Google Pixel
-  ───────────────────
-  Glaciar      #A8C4D4   azul hielo
-  Piedra Lunar #C8BAA8   gris cálido
-  Obsidiana    #2D2B2D   negro profundo
-  Coral        #F5856A   salmón cálido
-  Sage         #8DAF9A   verde salvia
-  Porcelana    #F5F2EC   blanco cálido (fondo)
-  Avellana     #B39C80   marrón cálido
-*/
-
 interface ResolvedResult { name: string; httpsUrl: string; }
 type Phase = "select" | "ready" | "uploading" | "processing" | "done" | "error";
 
-const STYLE_IMAGES: Record<string, string> = {
-  "FONDO BLANCO":    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&q=80",
-  "MODELO DE PIE":   "https://images.unsplash.com/photo-1600269452121-4f2416e55c28?w=300&q=80",
-  "MODELO AGACHADO": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80",
-};
+/**
+ * Convierte el nombre del prompt al slug del archivo en /public/styles/
+ * Ej: "MODELO CATÁLOGO" → "/styles/modelo-catalogo.webp"
+ */
+function styleImage(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")   // quita tildes
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `/styles/${slug}.webp`;
+}
 
 export default function UploadPage() {
   const { user, isAdmin } = useAuth();
@@ -45,6 +41,7 @@ export default function UploadPage() {
   const [file, setFile]       = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [selected, setSelected] = useState<string | null>(null); // nombre del prompt seleccionado
 
   const [phase, setPhase]         = useState<Phase>("select");
   const [progress, setProgress]   = useState(0);
@@ -101,10 +98,10 @@ export default function UploadPage() {
   }
 
   async function handleGenerate() {
-    if (!file || !user) return;
+    if (!file || !user || !selected) return;
     setPhase("uploading"); setErrorMsg("");
     try {
-      const id = await createOrder(user.uid);
+      const id = await createOrder(user.uid, selected);
       setOrderId(id);
       await uploadOriginal(user.uid, id, file, setProgress);
       setPhase("processing");
@@ -126,29 +123,25 @@ export default function UploadPage() {
     await signOut(auth); router.replace("/login");
   }
 
-  /* ────────────────── RENDER ────────────────── */
-  return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F5F2EC" /* Porcelana */ }}>
+  const canGenerate = phase === "ready" && selected !== null;
 
-      {/* ── Header Obsidiana ── */}
-      <header
-        className="sticky top-0 z-10 flex items-center justify-between px-4 py-3"
-        style={{ backgroundColor: "#2D2B2D" /* Obsidiana */ }}
-      >
-        <span className="text-sm font-semibold text-white tracking-wide">
-          Zapatillas Studio
-        </span>
+  /* ──────────── RENDER ──────────── */
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: "#F5F2EC" }}>
+
+      {/* Header Obsidiana */}
+      <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3"
+        style={{ backgroundColor: "#2D2B2D" }}>
+        <span className="text-sm font-semibold text-white tracking-wide">Zapatillas Studio</span>
         <div className="flex items-center gap-3">
           {isAdmin && (
-            <a href="/admin/prompts"
-              className="flex items-center gap-1 text-xs transition"
-              style={{ color: "#A8C4D4" /* Glaciar */ }}>
+            <a href="/admin/prompts" className="flex items-center gap-1 text-xs transition"
+              style={{ color: "#A8C4D4" }}>
               <Shield size={13} /> Admin
             </a>
           )}
-          <button onClick={handleSignOut}
-            className="flex items-center gap-1 text-xs transition"
-            style={{ color: "#C8BAA8" /* Piedra Lunar */ }}>
+          <button onClick={handleSignOut} className="flex items-center gap-1 text-xs transition"
+            style={{ color: "#C8BAA8" }}>
             <LogOut size={13} /> Salir
           </button>
         </div>
@@ -156,10 +149,10 @@ export default function UploadPage() {
 
       <div className="max-w-sm mx-auto px-4 py-5 space-y-5">
 
-        {/* ── SECCIÓN: SUBIR IMAGEN ── */}
+        {/* ── SUBIR IMAGEN ── */}
         <section>
-          <p className="text-xs font-bold uppercase tracking-[.18em] mb-3"
-            style={{ color: "#2D2B2D" /* Obsidiana */ }}>
+          <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
+            style={{ color: "#2D2B2D" }}>
             Subir imagen
           </p>
 
@@ -167,28 +160,23 @@ export default function UploadPage() {
             <div className="grid grid-cols-2 gap-3">
               <input ref={inputRef} type="file" accept="image/*" className="sr-only"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-
-              {/* Cámara */}
               <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
-                style={{ backgroundColor: "white", borderColor: "#C8BAA8" /* Piedra Lunar */ }}>
-                <Camera size={22} style={{ color: "#A8C4D4" /* Glaciar */ }} />
+                style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
+                <Camera size={22} style={{ color: "#A8C4D4" }} />
                 <span className="text-sm font-medium" style={{ color: "#2D2B2D" }}>Cámara</span>
                 <input type="file" accept="image/*" capture="environment" className="sr-only"
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
               </label>
-
-              {/* Galería */}
               <label onClick={() => inputRef.current?.click()}
                 className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
-                style={{ backgroundColor: "white", borderColor: "#C8BAA8" /* Piedra Lunar */ }}>
-                <ImagePlus size={22} style={{ color: "#A8C4D4" /* Glaciar */ }} />
+                style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
+                <ImagePlus size={22} style={{ color: "#A8C4D4" }} />
                 <span className="text-sm font-medium" style={{ color: "#2D2B2D" }}>Galería</span>
               </label>
             </div>
           ) : (
-            /* Tarjeta imagen seleccionada */
             <div className="flex items-center gap-3 rounded-2xl border p-3"
-              style={{ backgroundColor: "white", borderColor: "#C8BAA8" /* Piedra Lunar */ }}>
+              style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={preview!} alt="Zapatilla"
                 className="w-16 h-16 rounded-xl object-cover shrink-0"
@@ -201,13 +189,13 @@ export default function UploadPage() {
                   <div className="mt-2 h-1.5 rounded-full overflow-hidden"
                     style={{ backgroundColor: "#E8E0D8" }}>
                     <div className="h-full rounded-full transition-all duration-300"
-                      style={{ width: `${progress}%`, backgroundColor: "#A8C4D4" /* Glaciar */ }} />
+                      style={{ width: `${progress}%`, backgroundColor: "#A8C4D4" }} />
                   </div>
                 )}
                 {phase === "ready" && (
                   <button onClick={handleClear}
                     className="mt-1 text-xs font-medium hover:opacity-70 transition"
-                    style={{ color: "#A8C4D4" /* Glaciar */ }}>
+                    style={{ color: "#A8C4D4" }}>
                     Cambiar imagen
                   </button>
                 )}
@@ -215,7 +203,7 @@ export default function UploadPage() {
               {phase === "ready" && (
                 <button onClick={handleClear}
                   className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition"
-                  style={{ backgroundColor: "#F0EBE3", color: "#B39C80" /* Avellana */ }}>
+                  style={{ backgroundColor: "#F0EBE3", color: "#B39C80" }}>
                   <X size={13} />
                 </button>
               )}
@@ -223,49 +211,87 @@ export default function UploadPage() {
           )}
         </section>
 
-        {/* ── SECCIÓN: ESTILOS ── */}
+        {/* ── ESTILOS — selección única ── */}
         {(phase === "ready" || phase === "uploading") && prompts.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
-            {prompts.map((p) => {
-              const thumb = STYLE_IMAGES[p.name.toUpperCase().trim()];
-              return (
-                <div key={p.id} className="flex flex-col rounded-2xl border overflow-hidden"
-                  style={{ backgroundColor: "white", borderColor: "#C8BAA8" /* Piedra Lunar */ }}>
-                  <div className="w-full aspect-square overflow-hidden"
-                    style={{ backgroundColor: "#E8DDD0" /* Piedra Lunar claro */ }}>
-                    {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-2xl">👟</span>
+          <section>
+            <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
+              style={{ color: "#2D2B2D" }}>
+              Elegir estilo
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {prompts.map((p) => {
+                const isSelected = selected === p.name;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelected(p.name)}
+                    className="flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97] relative"
+                    style={{
+                      backgroundColor: "white",
+                      border: isSelected
+                        ? "2.5px solid #A8C4D4"   /* Glaciar seleccionado */
+                        : "1.5px solid #C8BAA8",   /* Piedra Lunar normal */
+                      boxShadow: isSelected
+                        ? "0 0 0 3px #A8C4D420"   /* glow sutil Glaciar */
+                        : "none",
+                    }}
+                  >
+                    {/* Thumbnail */}
+                    <div className="w-full aspect-square overflow-hidden"
+                      style={{ backgroundColor: "#E8DDD0" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={styleImage(p.name)}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+
+                    {/* Nombre */}
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-center py-2 px-1 leading-tight"
+                      style={{ color: isSelected ? "#A8C4D4" : "#2D2B2D" }}>
+                      {p.name}
+                    </p>
+
+                    {/* Checkmark seleccionado */}
+                    {isSelected && (
+                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: "#A8C4D4" }}>
+                        <Check size={11} className="text-white" strokeWidth={3} />
                       </div>
                     )}
-                  </div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-center py-2 px-1 leading-tight"
-                    style={{ color: "#2D2B2D" /* Obsidiana */ }}>
-                    {p.name}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+            {!selected && (
+              <p className="text-xs mt-2 text-center" style={{ color: "#B39C80" }}>
+                Selecciona un estilo para continuar
+              </p>
+            )}
+          </section>
         )}
 
-        {/* ── Error ── */}
+        {/* Error */}
         {errorMsg && (
           <div className="flex items-start gap-2 p-3 rounded-xl"
             style={{ backgroundColor: "#FEF0ED", border: "1px solid #F5856A33" }}>
-            <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" /* Coral */ }} />
+            <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
             <p className="text-sm" style={{ color: "#C45A42" }}>{errorMsg}</p>
           </div>
         )}
 
-        {/* ── CTA: GENERAR CON IA ── */}
+        {/* ── GENERAR CON IA ── */}
         {phase === "ready" && (
-          <button onClick={handleGenerate}
+          <button onClick={handleGenerate} disabled={!canGenerate}
             className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white"
-            style={{ backgroundColor: "#2D2B2D" /* Obsidiana */ }}>
+            style={{
+              backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8",
+              cursor: canGenerate ? "pointer" : "not-allowed",
+            }}>
             GENERAR CON IA
           </button>
         )}
@@ -273,7 +299,7 @@ export default function UploadPage() {
         {/* ── SUBIENDO ── */}
         {phase === "uploading" && (
           <div className="w-full h-14 rounded-full flex items-center justify-center gap-2.5 text-white"
-            style={{ backgroundColor: "#2D2B2D" /* Obsidiana */ }}>
+            style={{ backgroundColor: "#2D2B2D" }}>
             <Loader2 size={16} className="animate-spin" />
             <span className="font-bold text-sm tracking-[.12em]">SUBIENDO...</span>
           </div>
@@ -284,15 +310,15 @@ export default function UploadPage() {
           <div className="rounded-2xl border p-7 flex flex-col items-center gap-3"
             style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
             <div className="w-14 h-14 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "#E8F2F7" /* Glaciar tenue */ }}>
-              <Loader2 size={24} className="animate-spin" style={{ color: "#A8C4D4" /* Glaciar */ }} />
+              style={{ backgroundColor: "#E8F2F7" }}>
+              <Loader2 size={24} className="animate-spin" style={{ color: "#A8C4D4" }} />
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold" style={{ color: "#2D2B2D" }}>
                 Generando con IA...
               </p>
-              <p className="text-xs mt-1" style={{ color: "#B39C80" /* Avellana */ }}>
-                Esto puede tomar unos segundos
+              <p className="text-xs mt-1" style={{ color: "#B39C80" }}>
+                Estilo: <strong>{selected}</strong>
               </p>
             </div>
           </div>
@@ -309,25 +335,21 @@ export default function UploadPage() {
               <>
                 {results.map((r) => (
                   <div key={r.name} className="space-y-2.5">
-                    {/* Imagen generada */}
                     <div className="relative rounded-2xl overflow-hidden"
                       style={{ backgroundColor: "#C8BAA8" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={r.httpsUrl} alt={r.name}
                         className="w-full aspect-square object-cover" loading="lazy" />
-                      {/* Badge Coral */}
                       <span className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-wide"
-                        style={{ backgroundColor: "#F5856A" /* Coral */ }}>
+                        style={{ backgroundColor: "#F5856A" }}>
                         Generado por IA
                       </span>
                     </div>
-
-                    {/* Botón descargar — Glaciar */}
                     <button
                       onClick={() => handleDownload(r.httpsUrl, r.name)}
                       disabled={dlLoading[r.name]}
                       className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50"
-                      style={{ backgroundColor: "#A8C4D4" /* Glaciar */, color: "#2D2B2D" /* Obsidiana */ }}>
+                      style={{ backgroundColor: "#A8C4D4", color: "#2D2B2D" }}>
                       {dlLoading[r.name]
                         ? <Loader2 size={15} className="animate-spin" />
                         : <Download size={15} />}
@@ -336,19 +358,18 @@ export default function UploadPage() {
                   </div>
                 ))}
 
-                {/* Errores parciales */}
                 {order && Object.entries(order.results)
                   .filter(([, v]) => v === "error")
                   .map(([name]) => (
                     <p key={name} className="text-xs flex items-center gap-1.5"
-                      style={{ color: "#F5856A" /* Coral */ }}>
+                      style={{ color: "#F5856A" }}>
                       <AlertCircle size={12} /> {name}: no se pudo generar.
                     </p>
                   ))}
 
                 <button onClick={handleClear}
                   className="w-full text-sm py-1 text-center transition hover:opacity-70"
-                  style={{ color: "#2D2B2D" /* Obsidiana */ }}>
+                  style={{ color: "#2D2B2D" }}>
                   Volver
                 </button>
               </>
@@ -356,21 +377,18 @@ export default function UploadPage() {
           </section>
         )}
 
-        {/* ── Error total ── */}
+        {/* Error total */}
         {phase === "error" && (
           <button onClick={handleClear}
             className="w-full text-sm py-1 text-center hover:opacity-70 transition"
-            style={{ color: "#A8C4D4" /* Glaciar */ }}>
+            style={{ color: "#A8C4D4" }}>
             ← Intentar de nuevo
           </button>
         )}
 
-        {/* ── Ver pedidos anteriores ── */}
         {(phase === "select" || phase === "ready") && (
           <p className="text-center text-xs pt-1">
-            <a href="/orders"
-              className="hover:opacity-70 transition"
-              style={{ color: "#8DAF9A" /* Sage */ }}>
+            <a href="/orders" className="hover:opacity-70 transition" style={{ color: "#8DAF9A" }}>
               Ver pedidos anteriores →
             </a>
           </p>
