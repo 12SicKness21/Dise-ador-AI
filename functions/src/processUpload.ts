@@ -10,7 +10,7 @@ import {
 } from "./lib/firestore";
 import { slugify } from "./lib/utils";
 
-const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
 // Pattern: uploads/{uid}/{orderId}/original.jpg
 const UPLOAD_PATTERN = /^uploads\/([^/]+)\/([^/]+)\/original\.jpg$/;
@@ -18,7 +18,7 @@ const UPLOAD_PATTERN = /^uploads\/([^/]+)\/([^/]+)\/original\.jpg$/;
 export const processUpload = onObjectFinalized(
   {
     region: "southamerica-west1",
-    secrets: [OPENAI_API_KEY],
+    secrets: [GEMINI_API_KEY],
     memory: "1GiB",
     timeoutSeconds: 540,
   },
@@ -58,7 +58,7 @@ export const processUpload = onObjectFinalized(
           console.log(`Generating "${label}" for order ${orderId}`);
 
           const pngBuffer = await generateImage(
-            OPENAI_API_KEY.value(),
+            GEMINI_API_KEY.value(),
             imageBuffer,
             prompt.prompt_text
           );

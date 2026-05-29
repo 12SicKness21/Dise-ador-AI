@@ -1,8 +1,8 @@
-import OpenAI, { toFile } from "openai";
+import { GoogleGenAI } from "@google/genai";
 
 /**
- * Genera una imagen usando GPT Image 1 (gpt-image-1) con la foto de la zapatilla
- * como referencia y el prompt como instrucción.
+ * Genera una imagen usando Gemini 2.0 Flash (image generation) con la foto
+ * de la zapatilla como referencia y el prompt como instrucción de estudio.
  *
  * Retorna el buffer PNG de la imagen generada.
  */
@@ -11,33 +11,34 @@ export async function generateImage(
   imageBuffer: Buffer,
   promptText: string
 ): Promise<Buffer> {
-  const client = new OpenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey });
 
-  const imageFile = await toFile(imageBuffer, "original.jpg", {
-    type: "image/jpeg",
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash-preview-image-generation",
+    contents: [
+      {
+        parts: [
+          {
+            inlineData: {
+              mimeType: "image/jpeg",
+              data: imageBuffer.toString("base64"),
+            },
+          },
+          { text: promptText },
+        ],
+      },
+    ],
+    config: {
+      responseModalities: ["IMAGE"],
+    },
   });
 
-  const response = await client.images.edit({
-    model: "gpt-image-1",
-    image: imageFile,
-    prompt: promptText,
-    n: 1,
-    size: "1024x1024",
-  });
-
-  const item = response.data?.[0];
-
-  // gpt-image-1 devuelve b64_json por defecto
-  if (item?.b64_json) {
-    return Buffer.from(item.b64_json, "base64");
+  const parts = response.candidates?.[0]?.content?.parts ?? [];
+  for (const part of parts) {
+    if (part.inlineData?.data) {
+      return Buffer.from(part.inlineData.data, "base64");
+    }
   }
 
-  // Fallback: si por algún motivo devuelve URL, descargar
-  if (item?.url) {
-    const res = await fetch(item.url);
-    const ab = await res.arrayBuffer();
-    return Buffer.from(ab);
-  }
-
-  throw new Error("OpenAI no devolvió imagen en la respuesta");
+  throw new Error("Gemini no devolvió una imagen en la respuesta.");
 }
