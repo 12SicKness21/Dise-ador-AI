@@ -295,15 +295,21 @@ export default function UploadPage() {
                   )}
                 </div>
               ))}
-              {/* Botón agregar más */}
+              {/* Botón agregar más — button en vez de label para evitar bugs de browser */}
               {phase === "ready" && (
-                <label
-                  className="shrink-0 w-20 h-20 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition border-2 border-dashed"
-                  style={{ borderColor: "#A8C4D4", backgroundColor: "#EBF5F9" }}
-                  onClick={() => { inputRef.current?.click(); }}>
-                  <Plus size={18} style={{ color: "#A8C4D4" }} />
-                  <span className="text-[10px] font-medium" style={{ color: "#A8C4D4" }}>Agregar</span>
-                </label>
+                <button
+                  type="button"
+                  className="shrink-0 w-20 h-20 rounded-xl flex flex-col items-center justify-center gap-1 transition border-2 border-dashed active:scale-95"
+                  style={{ borderColor: "#3EBF85", backgroundColor: "#E8F8F1" }}
+                  onClick={() => {
+                    if (inputRef.current) {
+                      inputRef.current.value = ""; // reset para permitir reselección
+                      inputRef.current.click();
+                    }
+                  }}>
+                  <Plus size={18} style={{ color: "#3EBF85" }} />
+                  <span className="text-[10px] font-semibold" style={{ color: "#3EBF85" }}>Agregar</span>
+                </button>
               )}
             </div>
           )}

@@ -222,16 +222,16 @@ function OrdersContent() {
             <button onClick={() => setViewMode("list")}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition"
               style={{
-                backgroundColor: viewMode === "list" ? "#A8C4D4" : "transparent",
-                color: viewMode === "list" ? "#2D2B2D" : "#C8BAA8",
+                backgroundColor: viewMode === "list" ? "#3EBF85" : "transparent",
+                color: viewMode === "list" ? "white" : "#C8BAA8",
               }}>
               <List size={12} /> Lista
             </button>
             <button onClick={() => setViewMode("detail")}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition"
               style={{
-                backgroundColor: viewMode === "detail" ? "#A8C4D4" : "transparent",
-                color: viewMode === "detail" ? "#2D2B2D" : "#C8BAA8",
+                backgroundColor: viewMode === "detail" ? "#3EBF85" : "transparent",
+                color: viewMode === "detail" ? "white" : "#C8BAA8",
               }}>
               <LayoutGrid size={12} /> Detalle
             </button>
