@@ -149,10 +149,11 @@ function OrderCard({ order, highlight, defaultExpanded }: CardProps) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={r.httpsUrl} alt={r.name}
                   className="w-full aspect-square object-cover" loading="lazy" />
+                {/* Badge "Generado por IA" desactivado por solicitud
                 <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-white text-[10px] font-bold uppercase"
                   style={{ backgroundColor: "#F5856A" }}>
                   Generado por IA
-                </span>
+                </span> */}
               </div>
               <button onClick={() => handleDownload(r.httpsUrl, r.name)}
                 disabled={dlLoading[r.name]}
@@ -183,7 +184,9 @@ function OrdersContent() {
 
   const [orders, setOrders]     = useState<(Order & { promptName?: string })[]>([]);
   const [loading, setLoading]   = useState(true);
-  const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+  // Vista "Lista" desactivada temporalmente — solo se muestra "Detalle"
+  // const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+  const viewMode = "detail" as const;
 
   useEffect(() => {
     if (!user) return;
@@ -217,7 +220,7 @@ function OrdersContent() {
           <p className="text-[11px]" style={{ color: "#C8BAA8" }}>{user?.email}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Toggle lista / detalle */}
+          {/* Toggle Lista / Detalle — desactivado temporalmente, solo Detalle visible
           <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #4D4B4B" }}>
             <button onClick={() => setViewMode("list")}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition"
@@ -235,7 +238,7 @@ function OrdersContent() {
               }}>
               <LayoutGrid size={12} /> Detalle
             </button>
-          </div>
+          </div> */}
 
           <a href="/upload"
             className="flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold"

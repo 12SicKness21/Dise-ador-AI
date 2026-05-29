@@ -245,6 +245,10 @@ export default function UploadPage() {
 
         {/* ── SUBIR IMAGEN(ES) ── */}
         <section>
+          {/* Input siempre en el DOM para que inputRef.current nunca sea null */}
+          <input ref={inputRef} type="file" accept="image/*" multiple className="sr-only"
+            onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} />
+
           <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
             style={{ color: "#2D2B2D" }}>
             {files.length > 1 ? `${files.length} imágenes seleccionadas` : "Subir imagen"}
@@ -253,8 +257,6 @@ export default function UploadPage() {
           {phase === "select" ? (
             /* Sin imágenes: botones cámara / galería */
             <div className="grid grid-cols-2 gap-3">
-              <input ref={inputRef} type="file" accept="image/*" multiple className="sr-only"
-                onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} />
               <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
                 style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
                 <Camera size={22} style={{ color: "#A8C4D4" }} />
@@ -407,7 +409,7 @@ export default function UploadPage() {
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: "#B39C80" }}>
                     {!os.order || os.order.status === "pending" ? "En cola..." :
-                     os.order.status === "processing" ? "Generando con IA..." :
+                     os.order.status === "processing" ? "Procesando..." :
                      os.order.status === "done" ? "✓ Listo" : "✗ Error"}
                   </p>
                 </div>
@@ -453,10 +455,11 @@ export default function UploadPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={r.httpsUrl} alt={r.name}
                           className="w-full aspect-square object-cover" loading="lazy" />
+                        {/* Badge "Generado por IA" desactivado por solicitud
                         <span className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-wide"
                           style={{ backgroundColor: "#F5856A" }}>
                           Generado por IA
-                        </span>
+                        </span> */}
                       </div>
                       <button
                         onClick={() => handleDownload(i, r.httpsUrl, r.name)}
