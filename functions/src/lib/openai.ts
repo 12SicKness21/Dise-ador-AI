@@ -14,7 +14,7 @@ export async function generateImage(
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash-exp-image-generation",
+    model: "gemini-2.5-flash-image",
     contents: [
       {
         parts: [
@@ -29,7 +29,7 @@ export async function generateImage(
       },
     ],
     config: {
-      responseModalities: ["IMAGE"],
+      responseModalities: ["TEXT", "IMAGE"],
     },
   });
 
