@@ -9,7 +9,11 @@ service firebase.storage {
       allow read: if request.auth != null && request.auth.uid == uid;
     }
     match /orders/{orderId}/{fileName} {
-      allow read: if request.auth != null;
+      // Solo el dueño del pedido puede ver sus imágenes generadas
+      allow read: if request.auth != null
+                  && firestore.get(
+                       /databases/(default)/documents/orders/$(orderId)
+                     ).data.uid == request.auth.uid;
       allow write: if false;
     }
   }
