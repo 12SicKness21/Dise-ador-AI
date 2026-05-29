@@ -9,13 +9,13 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Diseñador Studio",
+  title: "Moonkey IA Studio",
   description: "Genera fotos profesionales de tus zapatillas con IA",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Diseñador Studio",
+    title: "Moonkey IA Studio",
   },
 };
 
