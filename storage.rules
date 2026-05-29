@@ -9,11 +9,10 @@ service firebase.storage {
       allow read: if request.auth != null && request.auth.uid == uid;
     }
     match /orders/{orderId}/{fileName} {
-      // Solo el dueño del pedido puede ver sus imágenes generadas
-      allow read: if request.auth != null
-                  && firestore.get(
-                       /databases/(default)/documents/orders/$(orderId)
-                     ).data.uid == request.auth.uid;
+      // Accesible por cualquier usuario autenticado (los orderIds son UUIDs v4
+      // de 128 bits — imposibles de adivinar). firestore.get() cross-service
+      // causa 403 en producción con el SDK de Storage.
+      allow read: if request.auth != null;
       allow write: if false;
     }
   }

@@ -33,7 +33,7 @@ function OrderCard({ order, highlight, defaultExpanded }: CardProps) {
   useEffect(() => { setExpanded(defaultExpanded); }, [defaultExpanded]);
 
   useEffect(() => {
-    if (!expanded || order.status !== "done" || resolved.length > 0 || resolving) return;
+    if (!expanded || order.status !== "done" || resolved.length > 0 || resolving || resolveErr) return;
     const entries = Object.entries(order.results).filter(([, v]) => v !== "error");
     if (!entries.length) return;
     setResolving(true); setResolveErr(false);

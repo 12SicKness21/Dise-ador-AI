@@ -35,6 +35,7 @@ interface OrderState {
   order: Order | null;
   results: ResolvedResult[];
   resolving: boolean;
+  resolveError: boolean;
   dlLoading: Record<string, boolean>;
 }
 
@@ -108,7 +109,7 @@ export default function UploadPage() {
   // Resolver URLs cuando un pedido esté listo
   useEffect(() => {
     orderStates.forEach((os, idx) => {
-      if (!os.order || os.order.status !== "done" || os.results.length > 0 || os.resolving) return;
+      if (!os.order || os.order.status !== "done" || os.results.length > 0 || os.resolving || os.resolveError) return;
       const entries = Object.entries(os.order.results).filter(([, v]) => v !== "error");
       if (!entries.length) return;
       setOrderStates(prev => {
@@ -128,7 +129,7 @@ export default function UploadPage() {
         console.error("Error resolving URLs:", err);
         setOrderStates(prev => {
           const next = [...prev];
-          next[idx] = { ...next[idx], resolving: false };
+          next[idx] = { ...next[idx], resolving: false, resolveError: true };
           return next;
         });
       });
@@ -182,7 +183,7 @@ export default function UploadPage() {
               return next;
             });
           });
-          return { id, order: null, results: [], resolving: false, dlLoading: {} };
+          return { id, order: null, results: [], resolving: false, resolveError: false, dlLoading: {} };
         })
       );
       setOrderStates(created);
