@@ -12,17 +12,25 @@ export async function resolveGsUrl(gsPath: string): Promise<string> {
 }
 
 /**
- * Descarga una imagen al dispositivo usando la File API del navegador.
+ * Descarga una imagen al dispositivo.
+ * Intenta blob download (desktop con CORS configurado).
+ * Si falla por CORS o restricciones del navegador, abre en nueva pestaña.
  */
 export async function downloadImage(url: string, filename: string): Promise<void> {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = objectUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(objectUrl);
+  try {
+    const response = await fetch(url, { mode: "cors" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    // Fallback: abre en nueva pestaña (funciona en móvil y cuando CORS no está configurado)
+    window.open(url, "_blank", "noopener");
+  }
 }
