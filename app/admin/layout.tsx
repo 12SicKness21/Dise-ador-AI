@@ -23,7 +23,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-semibold text-sm tracking-tight">Diseñador Studio</span>
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo/logo.webp" alt="Moonkey IA" className="w-6 h-6 rounded-md object-contain" />
+            <span className="font-bold text-sm tracking-tight">Moonkey IA</span>
+          </div>
           <span className="text-zinc-300">·</span>
           <a href="/admin/prompts" className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900 transition">
             <List size={14} />

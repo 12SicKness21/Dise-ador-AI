@@ -32,8 +32,15 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen px-4">
       <div className="w-full max-w-sm">
         <div className="mb-10">
-          <h1 className="text-2xl font-semibold tracking-tight">Diseñador Studio</h1>
-          <p className="mt-1 text-sm text-zinc-500">Ingresa con tu cuenta para continuar.</p>
+          <div className="flex items-center gap-3 mb-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo/Logo_circulo.webp" alt="Moonkey IA" className="w-11 h-11 rounded-full object-cover" />
+            <div>
+              <h1 className="text-xl font-bold tracking-tight leading-none">Moonkey IA</h1>
+              <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest mt-0.5">Studio</p>
+            </div>
+          </div>
+          <p className="text-sm text-zinc-500">Ingresa con tu cuenta para continuar.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

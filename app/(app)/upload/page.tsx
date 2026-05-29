@@ -226,7 +226,14 @@ export default function UploadPage() {
       {/* Header Obsidiana */}
       <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3"
         style={{ backgroundColor: "#2D2B2D" }}>
-        <span className="text-sm font-semibold text-white tracking-wide">Diseñador Studio</span>
+        <div className="flex items-center gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo/Logo_circulo.webp" alt="Moonkey IA" className="w-7 h-7 rounded-full object-cover" />
+          <div className="flex flex-col leading-none">
+            <span className="text-sm font-bold text-white tracking-wide">Moonkey IA</span>
+            <span className="text-[9px] uppercase tracking-[.2em]" style={{ color: "#A8C4D4" }}>Studio</span>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           {isAdmin && (
             <a href="/admin/prompts" className="flex items-center gap-1 text-xs transition"
