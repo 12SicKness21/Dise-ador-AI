@@ -31,15 +31,11 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo/Logo_circulo.webp" alt="Moonkey IA" className="w-11 h-11 rounded-full object-cover" />
-            <div>
-              <h1 className="text-xl font-bold tracking-tight leading-none">Moonkey IA</h1>
-              <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest mt-0.5">Studio</p>
-            </div>
-          </div>
+        <div className="mb-10 flex flex-col items-center text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo/Logo_circulo.webp" alt="Moonkey IA" className="w-20 h-20 rounded-full object-cover mb-4" />
+          <h1 className="text-2xl font-bold tracking-tight leading-none">Moonkey IA</h1>
+          <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest mt-1 mb-3">Studio</p>
           <p className="text-sm text-zinc-500">Ingresa con tu cuenta para continuar.</p>
         </div>
 
