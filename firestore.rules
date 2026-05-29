@@ -9,11 +9,19 @@ service cloud.firestore {
                    && request.auth.token.email == "admin@causas.com";
     }
 
-    // Orders: usuario lee solo los suyos; escritura solo via Admin SDK (Functions)
+    // Orders:
+    //   - read: usuario lee solo los suyos
+    //   - create: usuario crea pedidos propios con status "pending" (desde cliente)
+    //   - update/delete: solo Admin SDK (Cloud Functions) — cliente bloqueado
     match /orders/{orderId} {
       allow read: if request.auth != null
                   && resource.data.uid == request.auth.uid;
-      allow write: if false;
+
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == "pending";
+
+      allow update, delete: if false;
     }
   }
 }
