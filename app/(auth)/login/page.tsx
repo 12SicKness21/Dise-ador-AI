@@ -32,8 +32,8 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen px-4">
       <div className="w-full max-w-sm">
         <div className="mb-10">
-          <h1 className="text-2xl font-semibold tracking-tight">Zapatillas Studio</h1>
-          <p className="mt-1 text-sm text-zinc-500">Ingresá con tu cuenta para continuar.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Diseñador Studio</h1>
+          <p className="mt-1 text-sm text-zinc-500">Ingresa con tu cuenta para continuar.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

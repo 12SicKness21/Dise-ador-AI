@@ -9,13 +9,13 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Zapatillas Studio",
-  description: "Generá fotos profesionales de tus zapatillas con IA",
+  title: "Diseñador Studio",
+  description: "Genera fotos profesionales de tus zapatillas con IA",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ZS Studio",
+    title: "Diseñador Studio",
   },
 };
 

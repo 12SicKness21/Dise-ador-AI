@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { onSnapshot, doc, Timestamp } from "firebase/firestore";
 import {
   Camera, ImagePlus, Download, X, Loader2,
-  Shield, LogOut, AlertCircle, Check,
+  Shield, LogOut, AlertCircle, Check, Plus,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
@@ -16,18 +16,35 @@ import { getActivePrompts, type Prompt } from "@/lib/prompts";
 import { resolveGsUrl, downloadImage as dlImg } from "@/lib/download";
 import type { Order } from "@/lib/orders";
 
+/*
+  Paleta Google Pixel
+  Obsidiana    #2D2B2D   negro profundo
+  Glaciar      #A8C4D4   azul hielo
+  Piedra Lunar #C8BAA8   gris cálido
+  Porcelana    #F5F2EC   blanco cálido (fondo)
+  Spearmint    #3EBF85   verde vibrante (seleccionado)
+  Coral        #F5856A   salmón (badge)
+  Avellana     #B39C80   marrón cálido
+  Sage         #8DAF9A   verde salvia
+*/
+
 interface ResolvedResult { name: string; httpsUrl: string; }
+
+interface OrderState {
+  id: string;
+  order: Order | null;
+  results: ResolvedResult[];
+  resolving: boolean;
+  dlLoading: Record<string, boolean>;
+}
+
 type Phase = "select" | "ready" | "uploading" | "processing" | "done" | "error";
 
-/**
- * Convierte el nombre del prompt al slug del archivo en /public/styles/
- * Ej: "MODELO CATÁLOGO" → "/styles/modelo-catalogo.webp"
- */
 function styleImage(name: string): string {
   const slug = name
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")   // quita tildes
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   return `/styles/${slug}.webp`;
@@ -38,101 +55,177 @@ export default function UploadPage() {
   const router = useRouter();
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile]       = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  const [files, setFiles]     = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [selected, setSelected] = useState<string | null>(null); // nombre del prompt seleccionado
+  const [selected, setSelected] = useState<string | null>(null);
 
   const [phase, setPhase]         = useState<Phase>("select");
-  const [progress, setProgress]   = useState(0);
-  const [orderId, setOrderId]     = useState<string | null>(null);
-  const [order, setOrder]         = useState<Order | null>(null);
-  const [results, setResults]     = useState<ResolvedResult[]>([]);
-  const [resolving, setResolving] = useState(false);
-  const [dlLoading, setDlLoading] = useState<Record<string, boolean>>({});
+  const [progresses, setProgresses] = useState<number[]>([]);
+  const [orderStates, setOrderStates] = useState<OrderState[]>([]);
   const [errorMsg, setErrorMsg]   = useState("");
 
   useEffect(() => {
     getActivePrompts().then(setPrompts).catch(console.error);
   }, []);
 
+  // Escuchar todos los pedidos activos
   useEffect(() => {
-    if (!orderId) return;
-    const unsub = onSnapshot(doc(db, "orders", orderId), (snap) => {
-      if (!snap.exists()) return;
-      const d = snap.data();
-      const o: Order = {
-        id: snap.id, uid: d.uid, status: d.status,
-        createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toDate() : null,
-        error: d.error ?? null, results: d.results ?? {},
-      };
-      setOrder(o);
-      if (o.status === "done")  setPhase("done");
-      if (o.status === "error") { setErrorMsg(o.error ?? "Error al generar."); setPhase("error"); }
+    if (!orderStates.length) return;
+    const unsubs = orderStates.map((os, idx) =>
+      onSnapshot(doc(db, "orders", os.id), (snap) => {
+        if (!snap.exists()) return;
+        const d = snap.data();
+        const o: Order = {
+          id: snap.id, uid: d.uid, status: d.status,
+          createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toDate() : null,
+          error: d.error ?? null, results: d.results ?? {},
+        };
+        setOrderStates(prev => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], order: o };
+          return next;
+        });
+        if (o.status === "done" || o.status === "error") {
+          checkAllDone();
+        }
+      })
+    );
+    return () => unsubs.forEach(u => u());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderStates.map(s => s.id).join(",")]);
+
+  function checkAllDone() {
+    setOrderStates(prev => {
+      const allSettled = prev.every(s => s.order && (s.order.status === "done" || s.order.status === "error"));
+      if (allSettled) setPhase("done");
+      return prev;
     });
-    return unsub;
-  }, [orderId]);
+  }
 
+  // Resolver URLs cuando un pedido esté listo
   useEffect(() => {
-    if (!order || order.status !== "done") return;
-    const entries = Object.entries(order.results).filter(([, v]) => v !== "error");
-    if (!entries.length) return;
-    setResolving(true);
-    Promise.all(entries.map(async ([name, gsPath]) => ({
-      name, httpsUrl: await resolveGsUrl(gsPath),
-    }))).then(setResults).catch(console.error).finally(() => setResolving(false));
-  }, [order]);
+    orderStates.forEach((os, idx) => {
+      if (!os.order || os.order.status !== "done" || os.results.length > 0 || os.resolving) return;
+      const entries = Object.entries(os.order.results).filter(([, v]) => v !== "error");
+      if (!entries.length) return;
+      setOrderStates(prev => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], resolving: true };
+        return next;
+      });
+      Promise.all(entries.map(async ([name, gsPath]) => ({
+        name, httpsUrl: await resolveGsUrl(gsPath),
+      }))).then(results => {
+        setOrderStates(prev => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], results, resolving: false };
+          return next;
+        });
+      }).catch(err => {
+        console.error("Error resolving URLs:", err);
+        setOrderStates(prev => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], resolving: false };
+          return next;
+        });
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderStates.map(s => s.order?.status).join(",")]);
 
-  function handleFile(f: File) {
-    if (!f.type.startsWith("image/")) { setErrorMsg("Solo se aceptan imágenes."); return; }
-    if (f.size > 10 * 1024 * 1024)   { setErrorMsg("La imagen debe pesar menos de 10 MB."); return; }
-    setErrorMsg(""); setFile(f); setPreview(URL.createObjectURL(f)); setPhase("ready");
+  function addFiles(newFiles: File[]) {
+    const valid = newFiles.filter(f =>
+      f.type.startsWith("image/") && f.size <= 10 * 1024 * 1024
+    );
+    if (!valid.length) { setErrorMsg("Solo imágenes de máximo 10 MB."); return; }
+    setErrorMsg("");
+    setFiles(prev => [...prev, ...valid]);
+    setPreviews(prev => [...prev, ...valid.map(f => URL.createObjectURL(f))]);
+    setPhase("ready");
+  }
+
+  function removeFile(i: number) {
+    URL.revokeObjectURL(previews[i]);
+    const newFiles = files.filter((_, j) => j !== i);
+    const newPreviews = previews.filter((_, j) => j !== i);
+    setFiles(newFiles);
+    setPreviews(newPreviews);
+    if (newFiles.length === 0) setPhase("select");
   }
 
   function handleClear() {
-    setFile(null);
-    if (preview) URL.revokeObjectURL(preview);
-    setPreview(null); setPhase("select"); setProgress(0); setErrorMsg("");
-    setOrderId(null); setOrder(null); setResults([]);
+    previews.forEach(URL.revokeObjectURL);
+    setFiles([]); setPreviews([]); setPhase("select");
+    setProgresses([]); setOrderStates([]);
+    setErrorMsg(""); setSelected(null);
     if (inputRef.current) inputRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
   }
 
   async function handleGenerate() {
-    if (!file || !user || !selected) return;
-    setPhase("uploading"); setErrorMsg("");
+    if (!files.length || !user || !selected) return;
+    setPhase("uploading");
+    setErrorMsg("");
+    setProgresses(files.map(() => 0));
+
     try {
-      const id = await createOrder(user.uid, selected);
-      setOrderId(id);
-      await uploadOriginal(user.uid, id, file, setProgress);
+      const created: OrderState[] = await Promise.all(
+        files.map(async (file, i) => {
+          const id = await createOrder(user.uid, selected);
+          await uploadOriginal(user.uid, id, file, (pct) => {
+            setProgresses(prev => {
+              const next = [...prev];
+              next[i] = pct;
+              return next;
+            });
+          });
+          return { id, order: null, results: [], resolving: false, dlLoading: {} };
+        })
+      );
+      setOrderStates(created);
       setPhase("processing");
     } catch (e) {
       console.error(e);
-      setErrorMsg("Error al subir la foto. Intenta de nuevo.");
-      setPhase("ready"); setProgress(0);
+      setErrorMsg("Error al subir las fotos. Intenta de nuevo.");
+      setPhase("ready");
+      setProgresses([]);
     }
   }
 
-  async function handleDownload(url: string, name: string) {
-    setDlLoading(p => ({ ...p, [name]: true }));
-    try { await dlImg(url, `zapatilla_${name.toLowerCase().replace(/\s+/g, "_")}.png`); }
+  async function handleDownload(osIdx: number, url: string, name: string) {
+    setOrderStates(prev => {
+      const next = [...prev];
+      next[osIdx] = { ...next[osIdx], dlLoading: { ...next[osIdx].dlLoading, [name]: true } };
+      return next;
+    });
+    try { await dlImg(url, `disenador_${name.toLowerCase().replace(/\s+/g, "_")}.png`); }
     catch { window.open(url, "_blank", "noopener"); }
-    finally { setDlLoading(p => ({ ...p, [name]: false })); }
+    finally {
+      setOrderStates(prev => {
+        const next = [...prev];
+        next[osIdx] = { ...next[osIdx], dlLoading: { ...next[osIdx].dlLoading, [name]: false } };
+        return next;
+      });
+    }
   }
 
   async function handleSignOut() {
     await signOut(auth); router.replace("/login");
   }
 
-  const canGenerate = phase === "ready" && selected !== null;
+  const canGenerate = phase === "ready" && selected !== null && files.length > 0;
+  const allDone = orderStates.length > 0 && orderStates.every(s => s.order && (s.order.status === "done" || s.order.status === "error"));
 
-  /* ──────────── RENDER ──────────── */
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#F5F2EC" }}>
 
       {/* Header Obsidiana */}
       <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3"
         style={{ backgroundColor: "#2D2B2D" }}>
-        <span className="text-sm font-semibold text-white tracking-wide">Zapatillas Studio</span>
+        <span className="text-sm font-semibold text-white tracking-wide">Diseñador Studio</span>
         <div className="flex items-center gap-3">
           {isAdmin && (
             <a href="/admin/prompts" className="flex items-center gap-1 text-xs transition"
@@ -149,23 +242,24 @@ export default function UploadPage() {
 
       <div className="max-w-sm mx-auto px-4 py-5 space-y-5">
 
-        {/* ── SUBIR IMAGEN ── */}
+        {/* ── SUBIR IMAGEN(ES) ── */}
         <section>
           <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
             style={{ color: "#2D2B2D" }}>
-            Subir imagen
+            {files.length > 1 ? `${files.length} imágenes seleccionadas` : "Subir imagen"}
           </p>
 
           {phase === "select" ? (
+            /* Sin imágenes: botones cámara / galería */
             <div className="grid grid-cols-2 gap-3">
-              <input ref={inputRef} type="file" accept="image/*" className="sr-only"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+              <input ref={inputRef} type="file" accept="image/*" multiple className="sr-only"
+                onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} />
               <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
                 style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
                 <Camera size={22} style={{ color: "#A8C4D4" }} />
                 <span className="text-sm font-medium" style={{ color: "#2D2B2D" }}>Cámara</span>
-                <input type="file" accept="image/*" capture="environment" className="sr-only"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only"
+                  onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} />
               </label>
               <label onClick={() => inputRef.current?.click()}
                 className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
@@ -175,37 +269,41 @@ export default function UploadPage() {
               </label>
             </div>
           ) : (
-            <div className="flex items-center gap-3 rounded-2xl border p-3"
-              style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview!} alt="Zapatilla"
-                className="w-16 h-16 rounded-xl object-cover shrink-0"
-                style={{ backgroundColor: "#C8BAA8" }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: "#2D2B2D" }}>
-                  Imagen de zapatilla original
-                </p>
-                {phase === "uploading" && (
-                  <div className="mt-2 h-1.5 rounded-full overflow-hidden"
-                    style={{ backgroundColor: "#E8E0D8" }}>
-                    <div className="h-full rounded-full transition-all duration-300"
-                      style={{ width: `${progress}%`, backgroundColor: "#A8C4D4" }} />
-                  </div>
-                )}
-                {phase === "ready" && (
-                  <button onClick={handleClear}
-                    className="mt-1 text-xs font-medium hover:opacity-70 transition"
-                    style={{ color: "#A8C4D4" }}>
-                    Cambiar imagen
-                  </button>
-                )}
-              </div>
+            /* Con imágenes: fila de thumbnails */
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {previews.map((url, i) => (
+                <div key={i} className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden"
+                  style={{ backgroundColor: "#C8BAA8" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Imagen ${i + 1}`} className="w-full h-full object-cover" />
+                  {phase === "uploading" && (
+                    <div className="absolute inset-0 bg-black/40 flex items-end">
+                      <div className="w-full h-1 bg-white/30">
+                        <div className="h-full transition-all" style={{
+                          width: `${progresses[i] ?? 0}%`,
+                          backgroundColor: "#A8C4D4",
+                        }} />
+                      </div>
+                    </div>
+                  )}
+                  {(phase === "ready") && (
+                    <button onClick={() => removeFile(i)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "#2D2B2D" }}>
+                      <X size={10} className="text-white" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {/* Botón agregar más */}
               {phase === "ready" && (
-                <button onClick={handleClear}
-                  className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition"
-                  style={{ backgroundColor: "#F0EBE3", color: "#B39C80" }}>
-                  <X size={13} />
-                </button>
+                <label
+                  className="shrink-0 w-20 h-20 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition border-2 border-dashed"
+                  style={{ borderColor: "#A8C4D4", backgroundColor: "#EBF5F9" }}
+                  onClick={() => { inputRef.current?.click(); }}>
+                  <Plus size={18} style={{ color: "#A8C4D4" }} />
+                  <span className="text-[10px] font-medium" style={{ color: "#A8C4D4" }}>Agregar</span>
+                </label>
               )}
             </div>
           )}
@@ -222,44 +320,27 @@ export default function UploadPage() {
               {prompts.map((p) => {
                 const isSelected = selected === p.name;
                 return (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelected(p.name)}
+                  <button key={p.id} onClick={() => setSelected(p.name)}
                     className="flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97] relative"
                     style={{
                       backgroundColor: "white",
-                      border: isSelected
-                        ? "2.5px solid #A8C4D4"   /* Glaciar seleccionado */
-                        : "1.5px solid #C8BAA8",   /* Piedra Lunar normal */
-                      boxShadow: isSelected
-                        ? "0 0 0 3px #A8C4D420"   /* glow sutil Glaciar */
-                        : "none",
-                    }}
-                  >
-                    {/* Thumbnail */}
+                      border: isSelected ? "2.5px solid #3EBF85" : "1.5px solid #C8BAA8",
+                      boxShadow: isSelected ? "0 0 0 3px #3EBF8520" : "none",
+                    }}>
                     <div className="w-full aspect-square overflow-hidden"
                       style={{ backgroundColor: "#E8DDD0" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={styleImage(p.name)}
-                        alt={p.name}
+                      <img src={styleImage(p.name)} alt={p.name}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                     </div>
-
-                    {/* Nombre */}
                     <p className="text-[10px] font-bold uppercase tracking-wide text-center py-2 px-1 leading-tight"
-                      style={{ color: isSelected ? "#A8C4D4" : "#2D2B2D" }}>
+                      style={{ color: isSelected ? "#3EBF85" : "#2D2B2D" }}>
                       {p.name}
                     </p>
-
-                    {/* Checkmark seleccionado */}
                     {isSelected && (
                       <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: "#A8C4D4" }}>
+                        style={{ backgroundColor: "#3EBF85" }}>
                         <Check size={11} className="text-white" strokeWidth={3} />
                       </div>
                     )}
@@ -284,96 +365,115 @@ export default function UploadPage() {
           </div>
         )}
 
-        {/* ── GENERAR CON IA ── */}
+        {/* ── GENERAR IMAGEN ── */}
         {phase === "ready" && (
           <button onClick={handleGenerate} disabled={!canGenerate}
             className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white"
-            style={{
-              backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8",
-              cursor: canGenerate ? "pointer" : "not-allowed",
-            }}>
-            GENERAR CON IA
+            style={{ backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8", cursor: canGenerate ? "pointer" : "not-allowed" }}>
+            {files.length > 1 ? `GENERAR ${files.length} IMÁGENES` : "GENERAR IMAGEN"}
           </button>
         )}
 
-        {/* ── SUBIENDO ── */}
+        {/* Subiendo */}
         {phase === "uploading" && (
           <div className="w-full h-14 rounded-full flex items-center justify-center gap-2.5 text-white"
             style={{ backgroundColor: "#2D2B2D" }}>
             <Loader2 size={16} className="animate-spin" />
-            <span className="font-bold text-sm tracking-[.12em]">SUBIENDO...</span>
+            <span className="font-bold text-sm tracking-[.12em]">
+              SUBIENDO {files.length > 1 ? `(${files.length})` : ""}...
+            </span>
           </div>
         )}
 
-        {/* ── PROCESANDO ── */}
+        {/* Procesando */}
         {phase === "processing" && (
-          <div className="rounded-2xl border p-7 flex flex-col items-center gap-3"
-            style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
-            <div className="w-14 h-14 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "#E8F2F7" }}>
-              <Loader2 size={24} className="animate-spin" style={{ color: "#A8C4D4" }} />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: "#2D2B2D" }}>
-                Generando con IA...
-              </p>
-              <p className="text-xs mt-1" style={{ color: "#B39C80" }}>
-                Estilo: <strong>{selected}</strong>
-              </p>
-            </div>
+          <div className="space-y-2">
+            {orderStates.map((os, i) => (
+              <div key={os.id} className="rounded-2xl border p-4 flex items-center gap-3"
+                style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previews[i]} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0"
+                  style={{ backgroundColor: "#C8BAA8" }} />
+                <div className="flex-1">
+                  <p className="text-xs font-medium" style={{ color: "#2D2B2D" }}>
+                    Imagen {i + 1}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "#B39C80" }}>
+                    {!os.order || os.order.status === "pending" ? "En cola..." :
+                     os.order.status === "processing" ? "Generando con IA..." :
+                     os.order.status === "done" ? "✓ Listo" : "✗ Error"}
+                  </p>
+                </div>
+                {(!os.order || os.order.status === "pending" || os.order.status === "processing") && (
+                  <Loader2 size={18} className="animate-spin shrink-0" style={{ color: "#A8C4D4" }} />
+                )}
+              </div>
+            ))}
           </div>
         )}
 
-        {/* ── RESULTADOS ── */}
-        {phase === "done" && (
-          <section className="space-y-4">
-            {resolving ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 size={20} className="animate-spin" style={{ color: "#A8C4D4" }} />
-              </div>
-            ) : (
-              <>
-                {results.map((r) => (
-                  <div key={r.name} className="space-y-2.5">
-                    <div className="relative rounded-2xl overflow-hidden"
-                      style={{ backgroundColor: "#C8BAA8" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={r.httpsUrl} alt={r.name}
-                        className="w-full aspect-square object-cover" loading="lazy" />
-                      <span className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-wide"
-                        style={{ backgroundColor: "#F5856A" }}>
-                        Generado por IA
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleDownload(r.httpsUrl, r.name)}
-                      disabled={dlLoading[r.name]}
-                      className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50"
-                      style={{ backgroundColor: "#A8C4D4", color: "#2D2B2D" }}>
-                      {dlLoading[r.name]
-                        ? <Loader2 size={15} className="animate-spin" />
-                        : <Download size={15} />}
-                      DESCARGAR IMAGEN
-                    </button>
+        {/* Resultados */}
+        {(phase === "done" || (phase === "processing" && allDone)) && (
+          <section className="space-y-6">
+            {orderStates.map((os, i) => (
+              <div key={os.id}>
+                {/* Mini header por imagen */}
+                <div className="flex items-center gap-2 mb-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={previews[i]} alt="" className="w-8 h-8 rounded-lg object-cover"
+                    style={{ backgroundColor: "#C8BAA8" }} />
+                  <span className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>
+                    Imagen {i + 1}
+                  </span>
+                </div>
+
+                {os.resolving ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 size={18} className="animate-spin" style={{ color: "#A8C4D4" }} />
                   </div>
-                ))}
-
-                {order && Object.entries(order.results)
-                  .filter(([, v]) => v === "error")
-                  .map(([name]) => (
-                    <p key={name} className="text-xs flex items-center gap-1.5"
-                      style={{ color: "#F5856A" }}>
-                      <AlertCircle size={12} /> {name}: no se pudo generar.
+                ) : os.order?.status === "error" ? (
+                  <div className="flex items-start gap-2 p-3 rounded-xl"
+                    style={{ backgroundColor: "#FEF0ED" }}>
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
+                    <p className="text-sm" style={{ color: "#C45A42" }}>
+                      {os.order.error ?? "Error al generar."}
                     </p>
-                  ))}
+                  </div>
+                ) : os.results.length > 0 ? (
+                  os.results.map(r => (
+                    <div key={r.name} className="space-y-2.5">
+                      <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: "#C8BAA8" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={r.httpsUrl} alt={r.name}
+                          className="w-full aspect-square object-cover" loading="lazy" />
+                        <span className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-wide"
+                          style={{ backgroundColor: "#F5856A" }}>
+                          Generado por IA
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDownload(i, r.httpsUrl, r.name)}
+                        disabled={os.dlLoading[r.name]}
+                        className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50"
+                        style={{ backgroundColor: "#A8C4D4", color: "#2D2B2D" }}>
+                        {os.dlLoading[r.name] ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                        DESCARGAR IMAGEN
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 size={16} className="animate-spin" style={{ color: "#A8C4D4" }} />
+                  </div>
+                )}
+              </div>
+            ))}
 
-                <button onClick={handleClear}
-                  className="w-full text-sm py-1 text-center transition hover:opacity-70"
-                  style={{ color: "#2D2B2D" }}>
-                  Volver
-                </button>
-              </>
-            )}
+            <button onClick={handleClear}
+              className="w-full text-sm py-1 text-center transition hover:opacity-70"
+              style={{ color: "#2D2B2D" }}>
+              ← Nueva foto
+            </button>
           </section>
         )}
 
@@ -393,7 +493,6 @@ export default function UploadPage() {
             </a>
           </p>
         )}
-
       </div>
     </div>
   );

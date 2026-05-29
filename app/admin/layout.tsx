@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-semibold text-sm tracking-tight">Zapatillas Studio</span>
+          <span className="font-semibold text-sm tracking-tight">Diseñador Studio</span>
           <span className="text-zinc-300">·</span>
           <a href="/admin/prompts" className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900 transition">
             <List size={14} />
