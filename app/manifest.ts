@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Zapatillas Studio",
-    short_name: "ZS Studio",
-    description: "Generá fotos profesionales de tus zapatillas con IA",
+    name: "Diseñador Studio",
+    short_name: "Diseñador",
+    description: "Genera fotos profesionales de tus zapatillas con IA",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#000000",
+    background_color: "#F5F2EC",
+    theme_color: "#2D2B2D",
     orientation: "portrait",
     icons: [
       {
