@@ -61,7 +61,7 @@ export default function UploadPage() {
   const [files, setFiles]     = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
 
   const [phase, setPhase]         = useState<Phase>("select");
   const [progresses, setProgresses] = useState<number[]>([]);
@@ -161,13 +161,13 @@ export default function UploadPage() {
     previews.forEach(URL.revokeObjectURL);
     setFiles([]); setPreviews([]); setPhase("select");
     setProgresses([]); setOrderStates([]);
-    setErrorMsg(""); setSelected(null);
+    setErrorMsg(""); setSelected([]);
     if (inputRef.current) inputRef.current.value = "";
     if (cameraRef.current) cameraRef.current.value = "";
   }
 
   async function handleGenerate() {
-    if (!files.length || !user || !selected) return;
+    if (!files.length || !user || !selected.length) return;
     setPhase("uploading");
     setErrorMsg("");
     setProgresses(files.map(() => 0));
@@ -217,7 +217,7 @@ export default function UploadPage() {
     await signOut(auth); router.replace("/login");
   }
 
-  const canGenerate = phase === "ready" && selected !== null && files.length > 0;
+  const canGenerate = phase === "ready" && selected.length > 0 && files.length > 0;
   const allDone = orderStates.length > 0 && orderStates.every(s => s.order && (s.order.status === "done" || s.order.status === "error"));
 
   return (
@@ -325,18 +325,26 @@ export default function UploadPage() {
           )}
         </section>
 
-        {/* ── ESTILOS — selección única ── */}
+        {/* ── ESTILOS — selección múltiple ── */}
         {(phase === "ready" || phase === "uploading") && prompts.length > 0 && (
           <section>
             <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
               style={{ color: "#2D2B2D" }}>
-              Elegir estilo
+              {selected.length === 0
+                ? "Elegir estilos"
+                : `${selected.length} estilo${selected.length > 1 ? "s" : ""} seleccionado${selected.length > 1 ? "s" : ""}`}
             </p>
             <div className="grid grid-cols-3 gap-2">
               {prompts.map((p) => {
-                const isSelected = selected === p.name;
+                const isSelected = selected.includes(p.name);
                 return (
-                  <button key={p.id} onClick={() => setSelected(p.name)}
+                  <button
+                    key={p.id}
+                    onClick={() => setSelected(prev =>
+                      prev.includes(p.name)
+                        ? prev.filter(n => n !== p.name)   // deseleccionar
+                        : [...prev, p.name]                 // seleccionar
+                    )}
                     className="flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97] relative"
                     style={{
                       backgroundColor: "white",
@@ -364,9 +372,9 @@ export default function UploadPage() {
                 );
               })}
             </div>
-            {!selected && (
+            {selected.length === 0 && (
               <p className="text-xs mt-2 text-center" style={{ color: "#B39C80" }}>
-                Selecciona un estilo para continuar
+                Selecciona al menos un estilo para continuar
               </p>
             )}
           </section>
@@ -386,7 +394,9 @@ export default function UploadPage() {
           <button onClick={handleGenerate} disabled={!canGenerate}
             className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white"
             style={{ backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8", cursor: canGenerate ? "pointer" : "not-allowed" }}>
-            {files.length > 1 ? `GENERAR ${files.length} IMÁGENES` : "GENERAR IMAGEN"}
+            {files.length > 1 || selected.length > 1
+              ? `GENERAR ${files.length * selected.length} IMAGEN${files.length * selected.length > 1 ? "ES" : ""}`
+              : "GENERAR IMAGEN"}
           </button>
         )}
 

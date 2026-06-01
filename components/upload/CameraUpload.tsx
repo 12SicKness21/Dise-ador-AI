@@ -51,7 +51,7 @@ export function CameraUpload() {
     setUploading(true);
     setError("");
     try {
-      const orderId = await createOrder(user.uid, "");
+      const orderId = await createOrder(user.uid, []);
       await uploadOriginal(user.uid, orderId, file, setProgress);
       router.push(`/orders?orderId=${orderId}`);
     } catch (e) {

@@ -10,11 +10,11 @@ export interface Order {
   results: Record<string, string>;
 }
 
-export async function createOrder(uid: string, promptName: string): Promise<string> {
+export async function createOrder(uid: string, promptNames: string[]): Promise<string> {
   const orderId = crypto.randomUUID();
   await setDoc(doc(db, "orders", orderId), {
     uid,
-    promptName,
+    promptNames,
     status: "pending",
     createdAt: serverTimestamp(),
     error: null,

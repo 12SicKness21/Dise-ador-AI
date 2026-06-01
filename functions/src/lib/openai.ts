@@ -30,6 +30,7 @@ export async function generateImage(
     ],
     config: {
       responseModalities: ["TEXT", "IMAGE"],
+      temperature: 0.2,  // menor variabilidad → mayor consistencia de producto
     },
   });
 

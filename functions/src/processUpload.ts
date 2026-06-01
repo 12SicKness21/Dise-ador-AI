@@ -12,8 +12,18 @@ import { slugify } from "./lib/utils";
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
-// Pattern: uploads/{uid}/{orderId}/original.jpg
+// System prompt fijo — protege el producto de ser modificado por Gemini
+const SYSTEM_PROMPT =
+  "You are a strict commercial e-commerce image editor. " +
+  "Your only job is to modify the background or add a model wearing the sneaker. " +
+  "You MUST keep the product (the sneaker) 100% unaltered — do not modify logos, colors, shapes, or any detail of the shoe. " +
+  "Instructions: ";
+
 const UPLOAD_PATTERN = /^uploads\/([^/]+)\/([^/]+)\/original\.jpg$/;
+
+type PromptResult =
+  | { label: string; ok: true; path: string }
+  | { label: string; ok: false };
 
 export const processUpload = onObjectFinalized(
   {
@@ -25,7 +35,6 @@ export const processUpload = onObjectFinalized(
   async (event) => {
     const filePath = event.data.name;
 
-    // Ignorar archivos que no sean el original
     const match = filePath.match(UPLOAD_PATTERN);
     if (!match) return;
 
@@ -38,55 +47,67 @@ export const processUpload = onObjectFinalized(
     try {
       await setOrderProcessing(db, orderId);
 
-      // Descargar la foto original
       const [imageBuffer] = await bucket.file(filePath).download();
 
-      // Leer el prompt seleccionado por el usuario
+      // Lee los prompts seleccionados — soporta nuevo campo (array) y legacy (string)
       const orderSnap = await db.collection("orders").doc(orderId).get();
-      const selectedPromptName = orderSnap.data()?.promptName as string | undefined;
+      const data = orderSnap.data() ?? {};
+      const selectedNames: string[] =
+        Array.isArray(data.promptNames)
+          ? data.promptNames
+          : data.promptName
+          ? [data.promptName as string]
+          : [];
 
-      // Obtener prompts activos y filtrar al seleccionado
       const allPrompts = await getActivePrompts(db);
-      const prompts = selectedPromptName
-        ? allPrompts.filter((p) => p.name === selectedPromptName)
-        : allPrompts;
+      const prompts =
+        selectedNames.length > 0
+          ? allPrompts.filter((p) => selectedNames.includes(p.name))
+          : allPrompts;
 
       if (prompts.length === 0) {
         await setOrderError(db, orderId, "No hay prompts activos configurados.");
         return;
       }
 
+      console.log(`Generating ${prompts.length} image(s) in parallel for order ${orderId}`);
+
+      // Generación en paralelo con Promise.all + system prompt fijo
+      const settled: PromptResult[] = await Promise.all(
+        prompts.map(async (prompt): Promise<PromptResult> => {
+          const label = prompt.name;
+          try {
+            const finalPrompt = SYSTEM_PROMPT + prompt.prompt_text;
+            console.log(`Generating "${label}" for order ${orderId}`);
+
+            const pngBuffer = await generateImage(
+              GEMINI_API_KEY.value(),
+              imageBuffer,
+              finalPrompt
+            );
+
+            const outputPath = `orders/${orderId}/${slugify(label)}.png`;
+            await bucket.file(outputPath).save(pngBuffer, {
+              contentType: "image/png",
+              metadata: { orderId, promptName: label, uid },
+            });
+
+            console.log(`"${label}" OK → ${outputPath}`);
+            return { label, ok: true, path: `gs://${bucket.name}/${outputPath}` };
+          } catch (err) {
+            console.error(`Error generating "${label}":`, err);
+            return { label, ok: false };
+          }
+        })
+      );
+
       const results: Record<string, string> = {};
-      let partialError = false;
-
-      // Generar una imagen por cada prompt activo
-      for (const prompt of prompts) {
-        const label = prompt.name;
-        try {
-          console.log(`Generating "${label}" for order ${orderId}`);
-
-          const pngBuffer = await generateImage(
-            GEMINI_API_KEY.value(),
-            imageBuffer,
-            prompt.prompt_text
-          );
-
-          const outputPath = `orders/${orderId}/${slugify(label)}.png`;
-          await bucket.file(outputPath).save(pngBuffer, {
-            contentType: "image/png",
-            metadata: { orderId, promptName: label, uid },
-          });
-
-          results[label] = `gs://${bucket.name}/${outputPath}`;
-          console.log(`"${label}" OK → ${outputPath}`);
-        } catch (err) {
-          console.error(`Error generating "${label}":`, err);
-          results[label] = "error";
-          partialError = true;
-        }
+      for (const r of settled) {
+        results[r.label] = r.ok ? r.path : "error";
       }
+      const partialError = settled.some((r) => !r.ok);
+      const allFailed = settled.every((r) => !r.ok);
 
-      const allFailed = Object.values(results).every((v) => v === "error");
       if (allFailed) {
         await setOrderError(db, orderId, "Todas las generaciones fallaron.");
       } else {
