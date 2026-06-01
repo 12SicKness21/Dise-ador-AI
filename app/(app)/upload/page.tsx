@@ -226,14 +226,14 @@ export default function UploadPage() {
       {/* Header Obsidiana */}
       <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3"
         style={{ backgroundColor: "#2D2B2D" }}>
-        <div className="flex items-center gap-2.5">
+        <a href="/upload" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo/Logo_circulo.webp" alt="Moonkey IA" className="w-7 h-7 rounded-full object-cover" />
           <div className="flex flex-col leading-none">
             <span className="text-sm font-bold text-white tracking-wide">Moonkey IA</span>
             <span className="text-[9px] uppercase tracking-[.2em]" style={{ color: "#A8C4D4" }}>Studio</span>
           </div>
-        </div>
+        </a>
         <div className="flex items-center gap-3">
           {isAdmin && (
             <a href="/admin/prompts" className="flex items-center gap-1 text-xs transition"
@@ -248,7 +248,12 @@ export default function UploadPage() {
         </div>
       </header>
 
-      <div className="max-w-sm mx-auto px-4 py-5 space-y-5">
+      {/* Layout: 1 columna en móvil, 2 columnas en pantalla grande */}
+      <div className="max-w-7xl mx-auto px-4 py-5">
+        <div className="lg:grid lg:grid-cols-[400px_1fr] lg:gap-10 lg:items-start">
+
+          {/* ── COLUMNA IZQUIERDA: controles ── */}
+          <div className="space-y-5">
 
         {/* ── SUBIR IMAGEN(ES) ── */}
         <section>
@@ -438,88 +443,91 @@ export default function UploadPage() {
           </div>
         )}
 
-        {/* Resultados */}
-        {(phase === "done" || (phase === "processing" && allDone)) && (
-          <section className="space-y-6">
-            {orderStates.map((os, i) => (
-              <div key={os.id}>
-                {/* Mini header por imagen */}
-                <div className="flex items-center gap-2 mb-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={previews[i]} alt="" className="w-8 h-8 rounded-lg object-cover"
-                    style={{ backgroundColor: "#C8BAA8" }} />
-                  <span className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>
-                    Imagen {i + 1}
-                  </span>
-                </div>
 
-                {os.resolving ? (
-                  <div className="flex items-center justify-center py-6">
-                    <Loader2 size={18} className="animate-spin" style={{ color: "#A8C4D4" }} />
-                  </div>
-                ) : os.order?.status === "error" ? (
-                  <div className="flex items-start gap-2 p-3 rounded-xl"
-                    style={{ backgroundColor: "#FEF0ED" }}>
-                    <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
-                    <p className="text-sm" style={{ color: "#C45A42" }}>
-                      {os.order.error ?? "Error al generar."}
-                    </p>
-                  </div>
-                ) : os.results.length > 0 ? (
-                  os.results.map(r => (
-                    <div key={r.name} className="space-y-2.5">
-                      <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: "#C8BAA8" }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={r.httpsUrl} alt={r.name}
-                          className="w-full aspect-square object-cover" loading="lazy" />
-                        {/* Badge "Generado por IA" desactivado por solicitud
-                        <span className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-wide"
-                          style={{ backgroundColor: "#F5856A" }}>
-                          Generado por IA
-                        </span> */}
-                      </div>
-                      <button
-                        onClick={() => handleDownload(i, r.httpsUrl, r.name)}
-                        disabled={os.dlLoading[r.name]}
-                        className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50"
-                        style={{ backgroundColor: "#A8C4D4", color: "#2D2B2D" }}>
-                        {os.dlLoading[r.name] ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-                        DESCARGAR IMAGEN
-                      </button>
+          {(phase === "select" || phase === "ready") && (
+            <p className="text-center text-xs pt-1">
+              <a href="/orders" className="hover:opacity-70 transition" style={{ color: "#8DAF9A" }}>
+                Ver pedidos anteriores →
+              </a>
+            </p>
+          )}
+
+        </div>{/* fin columna izquierda */}
+
+        {/* ── COLUMNA DERECHA: resultados ── */}
+        <div className="mt-5 lg:mt-0">
+
+          {/* Resultados */}
+          {(phase === "done" || (phase === "processing" && allDone)) && (
+            <section>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                {orderStates.map((os, i) =>
+                  os.resolving ? (
+                    <div key={os.id} className="flex items-center justify-center py-16 rounded-2xl"
+                      style={{ backgroundColor: "white" }}>
+                      <Loader2 size={18} className="animate-spin" style={{ color: "#A8C4D4" }} />
                     </div>
-                  ))
-                ) : (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 size={16} className="animate-spin" style={{ color: "#A8C4D4" }} />
-                  </div>
+                  ) : os.order?.status === "error" ? (
+                    <div key={os.id} className="flex items-start gap-2 p-3 rounded-xl"
+                      style={{ backgroundColor: "#FEF0ED" }}>
+                      <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
+                      <p className="text-sm" style={{ color: "#C45A42" }}>
+                        {os.order.error ?? "Error al generar."}
+                      </p>
+                    </div>
+                  ) : os.results.length > 0 ? (
+                    os.results.map(r => (
+                      <div key={`${os.id}-${r.name}`} className="space-y-2.5">
+                        <div className="flex items-center gap-2 mb-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={previews[i]} alt="" className="w-7 h-7 rounded-lg object-cover"
+                            style={{ backgroundColor: "#C8BAA8" }} />
+                          <span className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>{r.name}</span>
+                        </div>
+                        <div className="rounded-2xl overflow-hidden"
+                          style={{ backgroundColor: "#F5F2EC" }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={r.httpsUrl} alt={r.name}
+                            className="w-full object-contain" loading="lazy" />
+                        </div>
+                        <button
+                          onClick={() => handleDownload(i, r.httpsUrl, r.name)}
+                          disabled={os.dlLoading[r.name]}
+                          className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                          style={{ backgroundColor: "#A8C4D4", color: "#2D2B2D" }}>
+                          {os.dlLoading[r.name] ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                          DESCARGAR IMAGEN
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div key={os.id} className="flex items-center justify-center py-4">
+                      <Loader2 size={16} className="animate-spin" style={{ color: "#A8C4D4" }} />
+                    </div>
+                  )
                 )}
               </div>
-            ))}
 
+              <button onClick={handleClear}
+                className="w-full text-sm py-4 text-center transition hover:opacity-70 mt-2"
+                style={{ color: "#2D2B2D" }}>
+                ← Nueva foto
+              </button>
+            </section>
+          )}
+
+          {/* Error total */}
+          {phase === "error" && (
             <button onClick={handleClear}
-              className="w-full text-sm py-1 text-center transition hover:opacity-70"
-              style={{ color: "#2D2B2D" }}>
-              ← Nueva foto
+              className="w-full text-sm py-1 text-center hover:opacity-70 transition"
+              style={{ color: "#A8C4D4" }}>
+              ← Intentar de nuevo
             </button>
-          </section>
-        )}
+          )}
 
-        {/* Error total */}
-        {phase === "error" && (
-          <button onClick={handleClear}
-            className="w-full text-sm py-1 text-center hover:opacity-70 transition"
-            style={{ color: "#A8C4D4" }}>
-            ← Intentar de nuevo
-          </button>
-        )}
+        </div>{/* fin columna derecha */}
 
-        {(phase === "select" || phase === "ready") && (
-          <p className="text-center text-xs pt-1">
-            <a href="/orders" className="hover:opacity-70 transition" style={{ color: "#8DAF9A" }}>
-              Ver pedidos anteriores →
-            </a>
-          </p>
-        )}
+        </div>
       </div>
     </div>
   );
