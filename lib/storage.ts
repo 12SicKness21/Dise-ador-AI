@@ -1,10 +1,81 @@
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "./firebase";
 
+/** Lado más largo permitido antes de redimensionar (px). */
+const MAX_DIMENSION = 1200;
+
+/** Calidad JPEG para las fotos de zapatillas subidas por usuarios (0–1). */
+const UPLOAD_QUALITY = 0.8;
+
+/** Calidad JPEG para las fotos de ejemplo de prompts (admin). */
+const EXAMPLE_QUALITY = 0.85;
+
 /**
- * Sube la foto original a Storage.
+ * Comprime y redimensiona cualquier imagen a JPEG.
+ *
+ * - Si alguna dimensión supera `maxDimension`, la escala proporcionalmente.
+ * - Exporta siempre como image/jpeg con la `quality` indicada.
+ * - Libera el Object URL interno al terminar.
+ *
+ * @param source     File o Blob de imagen (JPEG, PNG, HEIC, WebP, etc.)
+ * @param quality    Factor de compresión JPEG (0–1). Default: 0.8
+ * @param maxDimension  Lado máximo en píxeles. Default: 1200
+ */
+export async function compressImage(
+  source: File | Blob,
+  quality = UPLOAD_QUALITY,
+  maxDimension = MAX_DIMENSION
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(source);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      // ── Calcular dimensiones finales ──────────────────────────────────
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        const ratio = Math.min(maxDimension / width, maxDimension / height);
+        width  = Math.round(width  * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      // ── Dibujar en canvas y exportar ──────────────────────────────────
+      const canvas = document.createElement("canvas");
+      canvas.width  = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("canvas.toBlob devolvió null"));
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("No se pudo cargar la imagen para comprimir"));
+    };
+
+    img.src = url;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Comprime la foto y la sube a Storage.
  * Path: uploads/{uid}/{orderId}/original.jpg
  * La Cloud Function escucha este path via onObjectFinalized.
+ *
+ * La compresión se aplica siempre (no solo a archivos no-JPEG) para garantizar
+ * que ninguna imagen supere 1200 px ni ~500 KB, reduciendo costos de Storage
+ * y tokens de entrada a Gemini.
  */
 export async function uploadOriginal(
   uid: string,
@@ -12,55 +83,24 @@ export async function uploadOriginal(
   file: File,
   onProgress?: (pct: number) => void
 ): Promise<void> {
+  onProgress?.(5);
+  const compressed = await compressImage(file, UPLOAD_QUALITY, MAX_DIMENSION);
+  onProgress?.(30);
+
   const fileRef = ref(storage, `uploads/${uid}/${orderId}/original.jpg`);
-
-  // Convertir a JPEG si no lo es (Safari/iOS puede enviar HEIC)
-  let blob: Blob = file;
-  if (file.type !== "image/jpeg") {
-    blob = await convertToJpeg(file);
-  }
-
-  onProgress?.(10);
-  await uploadBytes(fileRef, blob, { contentType: "image/jpeg" });
+  await uploadBytes(fileRef, compressed, { contentType: "image/jpeg" });
   onProgress?.(100);
 }
 
 /**
- * Sube la imagen de ejemplo de un prompt al Storage.
+ * Sube la imagen de ejemplo de un prompt (panel admin).
  * Path: prompt-images/{uuid}/example.webp
  * Retorna la URL de descarga pública (para usuarios autenticados).
  */
 export async function uploadPromptExample(file: File): Promise<string> {
+  const compressed = await compressImage(file, EXAMPLE_QUALITY, MAX_DIMENSION);
   const uuid = crypto.randomUUID();
   const fileRef = ref(storage, `prompt-images/${uuid}/example.webp`);
-  let blob: Blob = file;
-  if (file.type !== "image/webp") {
-    blob = await convertToJpeg(file);
-  }
-  await uploadBytes(fileRef, blob, { contentType: file.type || "image/jpeg" });
+  await uploadBytes(fileRef, compressed, { contentType: "image/jpeg" });
   return getDownloadURL(fileRef);
-}
-
-async function convertToJpeg(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      canvas.getContext("2d")!.drawImage(img, 0, 0);
-      canvas.toBlob(
-        (b) => {
-          URL.revokeObjectURL(url);
-          if (b) resolve(b);
-          else reject(new Error("Canvas toBlob failed"));
-        },
-        "image/jpeg",
-        0.92
-      );
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
 }
