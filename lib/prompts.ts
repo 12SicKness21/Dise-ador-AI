@@ -18,6 +18,7 @@ export interface Prompt {
   description: string;
   prompt_text: string;
   active: boolean;
+  exampleImageUrl?: string;
   createdAt: Date | null;
   createdBy: string;
   updatedAt: Date | null;

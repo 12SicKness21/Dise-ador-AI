@@ -80,7 +80,8 @@ export default function UploadPage() {
         if (!snap.exists()) return;
         const d = snap.data();
         const o: Order = {
-          id: snap.id, uid: d.uid, status: d.status,
+          id: snap.id, userId: d.userId, userEmail: d.userEmail ?? "",
+          status: d.status,
           createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toDate() : null,
           error: d.error ?? null, results: d.results ?? {},
         };
@@ -173,9 +174,10 @@ export default function UploadPage() {
     setProgresses(files.map(() => 0));
 
     try {
+      const selectedPrompts = prompts.filter((p) => selected.includes(p.name));
       const created: OrderState[] = await Promise.all(
         files.map(async (file, i) => {
-          const id = await createOrder(user.uid, selected);
+          const id = await createOrder(user.uid, user.email ?? "", selectedPrompts);
           await uploadOriginal(user.uid, id, file, (pct) => {
             setProgresses(prev => {
               const next = [...prev];
@@ -359,7 +361,7 @@ export default function UploadPage() {
                     <div className="w-full aspect-square overflow-hidden"
                       style={{ backgroundColor: "#E8DDD0" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={styleImage(p.name)} alt={p.name}
+                      <img src={p.exampleImageUrl || styleImage(p.name)} alt={p.name}
                         className="w-full h-full object-cover"
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                     </div>

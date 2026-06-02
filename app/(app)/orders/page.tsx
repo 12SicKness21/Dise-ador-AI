@@ -192,7 +192,7 @@ function OrdersContent() {
     if (!user) return;
     const q = query(
       collection(db, "orders"),
-      where("uid", "==", user.uid),
+      where("userId", "==", user.uid),
       orderBy("createdAt", "desc"),
       limit(20)
     );
@@ -200,8 +200,9 @@ function OrdersContent() {
       setOrders(snap.docs.map(d => {
         const data = d.data();
         return {
-          id: d.id, uid: data.uid, status: data.status,
-          promptName: data.promptName ?? null,
+          id: d.id, userId: data.userId, userEmail: data.userEmail ?? "",
+          status: data.status,
+          promptName: (data.promptNames as string[] | undefined)?.[0] ?? data.promptName ?? null,
           createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
           error: data.error ?? null, results: data.results ?? {},
         };

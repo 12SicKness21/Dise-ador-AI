@@ -1,19 +1,31 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // ─── Fotos originales del usuario ────────────────────────────────────
+    // El path lleva el uid del usuario: solo él puede leer/escribir sus uploads.
     match /uploads/{uid}/{orderId}/{fileName} {
       allow write: if request.auth != null
                    && request.auth.uid == uid
                    && request.resource.size < 10 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read:  if request.auth != null && request.auth.uid == uid;
     }
+
+    // ─── Resultados generados por IA ─────────────────────────────────────
+    // El orderId es un UUID v4 (128 bits) — imposible de adivinar.
+    // Los pedidos solo los ve el dueño en Firestore, así que cualquier
+    // usuario autenticado que conozca la URL puede descargar.
     match /orders/{orderId}/{fileName} {
-      // Accesible por cualquier usuario autenticado (los orderIds son UUIDs v4
-      // de 128 bits — imposibles de adivinar). firestore.get() cross-service
-      // causa 403 en producción con el SDK de Storage.
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read:  if request.auth != null;
+      allow write: if false;           // solo Cloud Functions (Admin SDK)
+    }
+
+    // ─── Imágenes de ejemplo de prompts (subidas por el admin) ───────────
+    match /prompt-images/{uuid}/{fileName} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == "Fb7DhwOnApOl8vT4nF1MlQzE8pm2";
     }
   }
 }
