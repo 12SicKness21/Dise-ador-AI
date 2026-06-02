@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
   collection, query, where, orderBy, limit,
@@ -10,48 +11,31 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { resolveGsUrl, downloadImage as dlImg } from "@/lib/download";
 import type { Order } from "@/lib/orders";
-import {
-  Loader2, Plus, Download, AlertCircle,
-  List, LayoutGrid, ChevronDown, ChevronUp,
-} from "lucide-react";
+import { Loader2, Plus, Download, AlertCircle, ChevronLeft } from "lucide-react";
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface ResolvedResult { name: string; httpsUrl: string; }
+type OrderWithMeta = Order & { promptName?: string };
 
-interface CardProps {
-  order: Order & { promptName?: string };
-  highlight: boolean;
-  defaultExpanded: boolean;
-}
+// ─── Paleta ───────────────────────────────────────────────────────────────────
 
-function OrderCard({ order, highlight, defaultExpanded }: CardProps) {
-  const [expanded, setExpanded]     = useState(defaultExpanded);
-  const [resolved, setResolved]     = useState<ResolvedResult[]>([]);
-  const [resolving, setResolving]   = useState(false);
-  const [resolveErr, setResolveErr] = useState(false);
-  const [dlLoading, setDlLoading]   = useState<Record<string, boolean>>({});
+const STATUS_COLOR: Record<Order["status"], string> = {
+  pending: "#C8BAA8", processing: "#A8C4D4", done: "#3EBF85", error: "#F5856A",
+};
+const STATUS_LABEL: Record<Order["status"], string> = {
+  pending: "En cola", processing: "Procesando", done: "Listo", error: "Error",
+};
 
-  useEffect(() => { setExpanded(defaultExpanded); }, [defaultExpanded]);
+// ─── OrderListItem ─────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!expanded || order.status !== "done" || resolved.length > 0 || resolving || resolveErr) return;
-    const entries = Object.entries(order.results).filter(([, v]) => v !== "error");
-    if (!entries.length) return;
-    setResolving(true); setResolveErr(false);
-    Promise.all(entries.map(async ([name, gsPath]) => ({
-      name, httpsUrl: await resolveGsUrl(gsPath),
-    })))
-      .then(setResolved)
-      .catch(err => { console.error(err); setResolveErr(true); })
-      .finally(() => setResolving(false));
-  }, [expanded, order.status, order.results, resolved.length, resolving]);
-
-  async function handleDownload(url: string, name: string) {
-    setDlLoading(p => ({ ...p, [name]: true }));
-    try { await dlImg(url, `disenador_${name.toLowerCase().replace(/\s+/g, "_")}.png`); }
-    catch { window.open(url, "_blank", "noopener"); }
-    finally { setDlLoading(p => ({ ...p, [name]: false })); }
-  }
-
+function OrderListItem({
+  order, selected, onClick,
+}: {
+  order: OrderWithMeta;
+  selected: boolean;
+  onClick: () => void;
+}) {
   const date = order.createdAt
     ? new Intl.DateTimeFormat("es", {
         day: "numeric", month: "short",
@@ -59,224 +43,418 @@ function OrderCard({ order, highlight, defaultExpanded }: CardProps) {
       }).format(order.createdAt)
     : "";
 
-  const STATUS_COLOR: Record<Order["status"], string> = {
-    pending: "#C8BAA8", processing: "#A8C4D4", done: "#3EBF85", error: "#F5856A",
-  };
-  const STATUS_LABEL: Record<Order["status"], string> = {
-    pending: "En cola", processing: "Procesando", done: "Listo", error: "Error",
-  };
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left px-4 py-3 flex items-center gap-3 rounded-xl transition-all"
+      style={{
+        backgroundColor: selected ? "#E8F8F1" : "transparent",
+        border: `1.5px solid ${selected ? "#3EBF85" : "transparent"}`,
+      }}
+    >
+      <div
+        className="w-2.5 h-2.5 rounded-full shrink-0"
+        style={{ backgroundColor: STATUS_COLOR[order.status] }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-mono font-semibold" style={{ color: "#2D2B2D" }}>
+            #{order.id.slice(0, 8)}
+          </span>
+          {order.promptName && (
+            <span
+              className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0"
+              style={{ backgroundColor: "#E8DDD0", color: "#B39C80" }}
+            >
+              {order.promptName}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-0.5">
+          {date && <p className="text-[11px]" style={{ color: "#B39C80" }}>{date}</p>}
+          <span className="text-[9px] font-bold ml-auto" style={{ color: STATUS_COLOR[order.status] }}>
+            {STATUS_LABEL[order.status]}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── OrderDetail ───────────────────────────────────────────────────────────────
+
+function OrderDetail({
+  order, resolved, resolving, resolveError, onClose,
+}: {
+  order: OrderWithMeta | null;
+  resolved: ResolvedResult[];
+  resolving: boolean;
+  resolveError: boolean;
+  onClose?: () => void;
+}) {
+  const [dlLoading, setDlLoading] = useState<Record<string, boolean>>({});
+
+  async function handleDownload(url: string, name: string) {
+    setDlLoading(p => ({ ...p, [name]: true }));
+    try { await dlImg(url, `moonkey_${name.toLowerCase().replace(/\s+/g, "_")}.png`); }
+    catch { window.open(url, "_blank", "noopener"); }
+    finally { setDlLoading(p => ({ ...p, [name]: false })); }
+  }
+
+  // ── Pantalla vacía ────────────────────────────────────────────────────────
+  if (!order) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 py-20">
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ backgroundColor: "#E8DDD0" }}
+        >
+          <Download size={24} style={{ color: "#B39C80" }} />
+        </div>
+        <p className="text-sm text-center" style={{ color: "#B39C80" }}>
+          Selecciona un pedido<br />para ver el detalle
+        </p>
+      </div>
+    );
+  }
+
+  const date = order.createdAt
+    ? new Intl.DateTimeFormat("es", {
+        day: "numeric", month: "long",
+        hour: "2-digit", minute: "2-digit",
+      }).format(order.createdAt)
+    : "";
 
   return (
-    <div className="rounded-2xl border overflow-hidden transition-all"
-      style={{
-        backgroundColor: "white",
-        borderColor: highlight ? "#A8C4D4" : "#C8BAA8",
-        boxShadow: highlight ? "0 0 0 3px #A8C4D430" : "none",
-      }}>
+    <div className="h-full overflow-y-auto px-5 py-5">
 
-      {/* ── Cabecera siempre visible ── */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{ backgroundColor: STATUS_COLOR[order.status] }} />
+      {/* Cabecera del detalle */}
+      <div className="flex items-start gap-3 mb-6">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 lg:hidden"
+            style={{ backgroundColor: "#F0EBE3" }}
+          >
+            <ChevronLeft size={16} style={{ color: "#2D2B2D" }} />
+          </button>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-mono font-semibold" style={{ color: "#2D2B2D" }}>
+            <span className="text-sm font-mono font-bold" style={{ color: "#2D2B2D" }}>
               #{order.id.slice(0, 8)}
             </span>
             {order.promptName && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide"
-                style={{ backgroundColor: "#E8DDD0", color: "#B39C80" }}>
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide"
+                style={{ backgroundColor: "#E8DDD0", color: "#B39C80" }}
+              >
                 {order.promptName}
               </span>
             )}
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto shrink-0"
+              style={{
+                backgroundColor: `${STATUS_COLOR[order.status]}22`,
+                color: STATUS_COLOR[order.status],
+              }}
+            >
+              {STATUS_LABEL[order.status]}
+            </span>
           </div>
-          {date && <p className="text-[11px] mt-0.5" style={{ color: "#B39C80" }}>{date}</p>}
+          {date && <p className="text-xs mt-0.5" style={{ color: "#B39C80" }}>{date}</p>}
         </div>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-          style={{ backgroundColor: `${STATUS_COLOR[order.status]}22`, color: STATUS_COLOR[order.status] }}>
-          {STATUS_LABEL[order.status]}
-        </span>
-        {order.status === "done" && (
-          <button onClick={() => setExpanded(v => !v)}
-            className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "#F0EBE3", color: "#B39C80" }}>
-            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-        )}
       </div>
 
-      {/* En cola / procesando */}
+      {/* ── Pendiente / Procesando ── */}
       {(order.status === "pending" || order.status === "processing") && (
-        <div className="flex items-center gap-2 px-4 pb-3">
-          <Loader2 size={13} className="animate-spin" style={{ color: "#A8C4D4" }} />
-          <p className="text-xs" style={{ color: "#B39C80" }}>
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <Loader2 size={24} className="animate-spin" style={{ color: "#A8C4D4" }} />
+          <p className="text-sm" style={{ color: "#B39C80" }}>
             {order.status === "pending" ? "En cola..." : "Generando con IA..."}
           </p>
         </div>
       )}
 
-      {/* Error */}
+      {/* ── Error ── */}
       {order.status === "error" && (
-        <div className="flex items-start gap-2 px-4 pb-3">
-          <AlertCircle size={13} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
-          <p className="text-xs" style={{ color: "#C45A42" }}>
-            {order.error ?? "Error al generar."}
-          </p>
+        <div className="flex items-start gap-2 p-3 rounded-xl" style={{ backgroundColor: "#FEF0ED" }}>
+          <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
+          <p className="text-sm" style={{ color: "#C45A42" }}>{order.error ?? "Error al generar."}</p>
         </div>
       )}
 
-      {/* ── Detalle expandido ── */}
-      {order.status === "done" && expanded && (
-        <div className="px-3 pb-3 pt-1 space-y-3 border-t" style={{ borderColor: "#F0EBE3" }}>
+      {/* ── Done ── */}
+      {order.status === "done" && (
+        <>
           {resolving && (
-            <div className="flex justify-center py-6">
-              <Loader2 size={18} className="animate-spin" style={{ color: "#A8C4D4" }} />
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={22} className="animate-spin" style={{ color: "#A8C4D4" }} />
             </div>
           )}
-          {resolveErr && (
-            <div className="flex items-start gap-2 p-3 rounded-xl"
-              style={{ backgroundColor: "#FEF0ED" }}>
-              <AlertCircle size={13} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
-              <p className="text-xs" style={{ color: "#C45A42" }}>
-                No se pudieron cargar las imágenes. Verifica tu conexión e intenta de nuevo.
+
+          {resolveError && (
+            <div className="flex items-start gap-2 p-3 rounded-xl" style={{ backgroundColor: "#FEF0ED" }}>
+              <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
+              <p className="text-sm" style={{ color: "#C45A42" }}>
+                No se pudieron cargar las imágenes. Verifica tu conexión.
               </p>
             </div>
           )}
-          {resolved.map(r => (
-            <div key={r.name} className="space-y-2 pt-1">
-              <div className="relative rounded-xl overflow-hidden"
-                style={{ backgroundColor: "#E8DDD0" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={r.httpsUrl} alt={r.name}
-                  className="w-full aspect-square object-cover" loading="lazy" />
-                {/* Badge "Generado por IA" desactivado por solicitud
-                <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-white text-[10px] font-bold uppercase"
-                  style={{ backgroundColor: "#F5856A" }}>
-                  Generado por IA
-                </span> */}
+
+          <div className="space-y-8">
+            {resolved.map(r => (
+              <div key={r.name} className="space-y-3">
+                {/* Imagen en alta resolución — next/image con unoptimized:
+                    Las URLs de Firebase Storage incluyen tokens de autenticación
+                    que funcionan como cache key único. Usamos unoptimized para
+                    evitar el límite de Vercel (1000 optimizaciones/mes en Hobby)
+                    y porque las imágenes ya vienen comprimidas desde el upload. */}
+                <div
+                  className="relative w-full aspect-square rounded-2xl overflow-hidden"
+                  style={{ backgroundColor: "#F5F2EC" }}
+                >
+                  <Image
+                    key={r.httpsUrl}
+                    src={r.httpsUrl}
+                    alt={r.name}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 1024px) 100vw, 65vw"
+                    loading="lazy"
+                    unoptimized
+                  />
+                </div>
+
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#B39C80" }}>
+                  {r.name}
+                </p>
+
+                {/* Botón de descarga prominente */}
+                <button
+                  onClick={() => handleDownload(r.httpsUrl, r.name)}
+                  disabled={dlLoading[r.name]}
+                  className="w-full h-14 rounded-full font-bold text-sm flex items-center justify-center gap-2.5 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                  style={{ backgroundColor: "#2D2B2D", color: "white" }}
+                >
+                  {dlLoading[r.name]
+                    ? <Loader2 size={16} className="animate-spin" />
+                    : <Download size={16} />}
+                  DESCARGAR IMAGEN
+                </button>
               </div>
-              <button onClick={() => handleDownload(r.httpsUrl, r.name)}
-                disabled={dlLoading[r.name]}
-                className="w-full h-10 rounded-full font-bold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50"
-                style={{ backgroundColor: "#A8C4D4", color: "#2D2B2D" }}>
-                {dlLoading[r.name] ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                DESCARGAR IMAGEN
-              </button>
-            </div>
-          ))}
-          {Object.entries(order.results).filter(([, v]) => v === "error").map(([name]) => (
-            <p key={name} className="text-xs flex items-center gap-1" style={{ color: "#F5856A" }}>
-              <AlertCircle size={11} /> {name}: no se pudo generar.
-            </p>
-          ))}
-        </div>
+            ))}
+
+            {/* Resultados con error parcial */}
+            {Object.entries(order.results)
+              .filter(([, v]) => v === "error")
+              .map(([name]) => (
+                <p key={name} className="text-xs flex items-center gap-1" style={{ color: "#F5856A" }}>
+                  <AlertCircle size={11} /> {name}: no se pudo generar.
+                </p>
+              ))}
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-/* ─────────────────────────────── */
+// ─── OrdersContent ─────────────────────────────────────────────────────────────
 
 function OrdersContent() {
   const { user } = useAuth();
-  const params   = useSearchParams();
+  const params      = useSearchParams();
   const highlightId = params.get("orderId");
 
-  const [orders, setOrders]     = useState<(Order & { promptName?: string })[]>([]);
+  const [orders, setOrders]     = useState<OrderWithMeta[]>([]);
   const [loading, setLoading]   = useState(true);
-  // Vista "Lista" desactivada temporalmente — solo se muestra "Detalle"
-  // const [viewMode, setViewMode] = useState<"list" | "detail">("list");
-  const viewMode = "detail" as const;
+  const [selectedId, setSelectedId] = useState<string | null>(highlightId);
+  const [mobileOpen, setMobileOpen] = useState(!!highlightId);
 
+  // Cache de resultados resueltos: orderId → ResolvedResult[]
+  const [resolvedMap,   setResolvedMap]   = useState<Map<string, ResolvedResult[]>>(new Map());
+  const [resolvingSet,  setResolvingSet]  = useState<Set<string>>(new Set());
+  const [errorSet,      setErrorSet]      = useState<Set<string>>(new Set());
+
+  const hasAutoSelected = useRef(false);
+
+  // ── Suscripción en tiempo real ──────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     const q = query(
       collection(db, "orders"),
       where("userId", "==", user.uid),
       orderBy("createdAt", "desc"),
-      limit(20)
+      limit(50)
     );
     return onSnapshot(q, (snap) => {
-      setOrders(snap.docs.map(d => {
+      const docs: OrderWithMeta[] = snap.docs.map(d => {
         const data = d.data();
         return {
-          id: d.id, userId: data.userId, userEmail: data.userEmail ?? "",
-          status: data.status,
-          promptName: (data.promptNames as string[] | undefined)?.[0] ?? data.promptName ?? null,
-          createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
-          error: data.error ?? null, results: data.results ?? {},
+          id:         d.id,
+          userId:     data.userId,
+          userEmail:  data.userEmail ?? "",
+          status:     data.status,
+          promptName: (data.promptNames as string[] | undefined)?.[0]
+                      ?? data.promptName
+                      ?? null,
+          createdAt:  data.createdAt instanceof Timestamp
+                        ? data.createdAt.toDate()
+                        : null,
+          error:   data.error ?? null,
+          results: data.results ?? {},
         };
-      }));
+      });
+
+      setOrders(docs);
       setLoading(false);
+
+      // Auto-seleccionar el primer pedido al cargar (solo una vez)
+      if (!hasAutoSelected.current && docs.length > 0) {
+        setSelectedId(highlightId ?? docs[0].id);
+        hasAutoSelected.current = true;
+      }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F5F2EC" }}>
+  // ── Resolver URLs cuando se selecciona un pedido "done" ────────────────
+  useEffect(() => {
+    if (!selectedId) return;
+    const order = orders.find(o => o.id === selectedId);
+    if (!order || order.status !== "done") return;
+    if (resolvedMap.has(selectedId) || resolvingSet.has(selectedId)) return;
 
-      <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3"
-        style={{ backgroundColor: "#2D2B2D" }}>
+    const entries = Object.entries(order.results).filter(([, v]) => v !== "error");
+    if (!entries.length) return;
+
+    setResolvingSet(prev => new Set(prev).add(selectedId));
+
+    Promise.all(entries.map(async ([name, gsPath]) => ({
+      name, httpsUrl: await resolveGsUrl(gsPath),
+    })))
+      .then(results => {
+        setResolvedMap(prev  => new Map(prev).set(selectedId, results));
+        setResolvingSet(prev => { const s = new Set(prev); s.delete(selectedId); return s; });
+      })
+      .catch(() => {
+        setErrorSet(prev    => new Set(prev).add(selectedId));
+        setResolvingSet(prev => { const s = new Set(prev); s.delete(selectedId); return s; });
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, orders]);
+
+  function handleSelect(id: string) {
+    setSelectedId(id);
+    setMobileOpen(true);
+  }
+
+  const selectedOrder = orders.find(o => o.id === selectedId) ?? null;
+  const detailProps = {
+    order:        selectedOrder,
+    resolved:     resolvedMap.get(selectedId ?? "")  ?? [],
+    resolving:    resolvingSet.has(selectedId ?? ""),
+    resolveError: errorSet.has(selectedId ?? ""),
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F5F2EC" }}>
+
+      {/* ── Header ── */}
+      <header
+        className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 shrink-0"
+        style={{ backgroundColor: "#2D2B2D" }}
+      >
         <div>
           <h1 className="text-sm font-semibold text-white">Mis pedidos</h1>
           <p className="text-[11px]" style={{ color: "#C8BAA8" }}>{user?.email}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle Lista / Detalle — desactivado temporalmente, solo Detalle visible
-          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #4D4B4B" }}>
-            <button onClick={() => setViewMode("list")}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition"
-              style={{
-                backgroundColor: viewMode === "list" ? "#3EBF85" : "transparent",
-                color: viewMode === "list" ? "white" : "#C8BAA8",
-              }}>
-              <List size={12} /> Lista
-            </button>
-            <button onClick={() => setViewMode("detail")}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition"
-              style={{
-                backgroundColor: viewMode === "detail" ? "#3EBF85" : "transparent",
-                color: viewMode === "detail" ? "white" : "#C8BAA8",
-              }}>
-              <LayoutGrid size={12} /> Detalle
-            </button>
-          </div> */}
-
-          <a href="/upload"
-            className="flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold"
-            style={{ backgroundColor: "#3EBF85", color: "white" }}>
-            <Plus size={12} /> Nuevo
-          </a>
-        </div>
+        <a
+          href="/upload"
+          className="flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold"
+          style={{ backgroundColor: "#3EBF85", color: "white" }}
+        >
+          <Plus size={12} /> Nuevo
+        </a>
       </header>
 
-      <div className="max-w-sm mx-auto px-4 py-5">
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 size={20} className="animate-spin" style={{ color: "#A8C4D4" }} />
+      {/* ── Cuerpo ── */}
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 size={20} className="animate-spin" style={{ color: "#A8C4D4" }} />
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 text-center py-20">
+          <p className="text-sm" style={{ color: "#B39C80" }}>
+            Todavía no subiste ninguna foto.
+          </p>
+          <a href="/upload" className="text-sm font-semibold hover:opacity-70" style={{ color: "#3EBF85" }}>
+            Subir mi primera imagen →
+          </a>
+        </div>
+      ) : (
+        /* ── Split Panel ──────────────────────────────────────────────────── */
+        <div className="flex-1 flex overflow-hidden">
+
+          {/* Columna izquierda — lista scrollable */}
+          <div
+            className="w-full lg:w-[35%] lg:max-w-[420px] overflow-y-auto shrink-0 border-r"
+            style={{ borderColor: "#E8DDD0" }}
+          >
+            <div className="p-3 space-y-1">
+              {orders.map(order => (
+                <OrderListItem
+                  key={order.id}
+                  order={order}
+                  selected={order.id === selectedId}
+                  onClick={() => handleSelect(order.id)}
+                />
+              ))}
+            </div>
           </div>
-        ) : orders.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 text-center py-16">
-            <p className="text-sm" style={{ color: "#B39C80" }}>
-              Todavía no subiste ninguna foto.
-            </p>
-            <a href="/upload" className="text-sm font-semibold hover:opacity-70"
-              style={{ color: "#3EBF85" }}>
-              Subir mi primera imagen →
-            </a>
+
+          {/* Columna derecha — detalle sticky (solo desktop) */}
+          <div
+            className="hidden lg:flex flex-col flex-1 overflow-hidden"
+            style={{ backgroundColor: "white" }}
+          >
+            <OrderDetail {...detailProps} />
           </div>
-        ) : (
-          <div className="space-y-3">
-            {orders.map(order => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                highlight={order.id === highlightId}
-                defaultExpanded={viewMode === "detail" || order.id === highlightId}
+
+        </div>
+      )}
+
+      {/* ── Modal / bottom-sheet (mobile) ── */}
+      {mobileOpen && selectedOrder && (
+        <div className="fixed inset-0 z-50 flex flex-col lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="flex-1 bg-black/50"
+            onClick={() => setMobileOpen(false)}
+          />
+          {/* Sheet */}
+          <div
+            className="rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              backgroundColor: "white",
+              maxHeight: "90dvh",
+              minHeight: "55dvh",
+            }}
+          >
+            {/* Handle visual */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "#C8BAA8" }} />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <OrderDetail
+                {...detailProps}
+                onClose={() => setMobileOpen(false)}
               />
-            ))}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

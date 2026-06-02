@@ -13,8 +13,17 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  // Declare turbopack config so Next.js 16 doesn't warn about webpack+turbopack mismatch
   turbopack: {},
+  images: {
+    remotePatterns: [
+      {
+        // Firebase Storage — permite <Image> con URLs de firebasestorage.googleapis.com
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com",
+        pathname: "/v0/b/**",
+      },
+    ],
+  },
 };
 
 export default withPWA(nextConfig);
