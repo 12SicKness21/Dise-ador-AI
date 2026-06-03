@@ -14,6 +14,7 @@ import type { Order } from "@/lib/orders";
 import {
   Loader2, Plus, Download, AlertCircle, ChevronLeft, Check, X, ZoomIn,
 } from "lucide-react";
+import { LogoLoader } from "@/components/LogoLoader";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -256,11 +257,7 @@ function OrderDetail({
         {/* ── Done ── */}
         {order.status === "done" && (
           <>
-            {resolving && (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 size={22} className="animate-spin" style={{ color: "#A8C4D4" }} />
-              </div>
-            )}
+            {resolving && <LogoLoader text="Cargando tu resultado..." />}
 
             {resolveError && (
               <div className="flex items-start gap-2 p-3 rounded-xl" style={{ backgroundColor: "#FEF0ED" }}>

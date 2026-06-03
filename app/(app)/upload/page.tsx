@@ -24,6 +24,7 @@ function useProcessingMessage(active: boolean): string {
   return PROCESSING_STEPS[idx];
 }
 // ─────────────────────────────────────────────────────────────────────────────
+import { LogoLoader } from "@/components/LogoLoader";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { onSnapshot, doc, Timestamp } from "firebase/firestore";
@@ -519,9 +520,8 @@ export default function UploadPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {orderStates.map((os, i) =>
                   os.resolving ? (
-                    <div key={os.id} className="flex items-center justify-center py-16 rounded-2xl"
-                      style={{ backgroundColor: "white" }}>
-                      <Loader2 size={18} className="animate-spin" style={{ color: "#A8C4D4" }} />
+                    <div key={os.id} className="rounded-2xl" style={{ backgroundColor: "white" }}>
+                      <LogoLoader text="Preparando tu imagen..." />
                     </div>
                   ) : os.order?.status === "error" ? (
                     <div key={os.id} className="flex items-start gap-2 p-3 rounded-xl"
@@ -557,8 +557,8 @@ export default function UploadPage() {
                       </div>
                     ))
                   ) : (
-                    <div key={os.id} className="flex items-center justify-center py-4">
-                      <Loader2 size={16} className="animate-spin" style={{ color: "#A8C4D4" }} />
+                    <div key={os.id} className="rounded-2xl" style={{ backgroundColor: "white" }}>
+                      <LogoLoader text="Preparando tu imagen..." />
                     </div>
                   )
                 )}
