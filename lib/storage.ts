@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes } from "firebase/storage";
 import { storage } from "./firebase";
 
 /** Lado más largo permitido antes de redimensionar (px). */
@@ -6,9 +6,6 @@ const MAX_DIMENSION = 1200;
 
 /** Calidad JPEG para las fotos de zapatillas subidas por usuarios (0–1). */
 const UPLOAD_QUALITY = 0.8;
-
-/** Calidad JPEG para las fotos de ejemplo de prompts (admin). */
-const EXAMPLE_QUALITY = 0.85;
 
 /**
  * Comprime y redimensiona cualquier imagen a JPEG.
@@ -90,17 +87,4 @@ export async function uploadOriginal(
   const fileRef = ref(storage, `uploads/${uid}/${orderId}/original.jpg`);
   await uploadBytes(fileRef, compressed, { contentType: "image/jpeg" });
   onProgress?.(100);
-}
-
-/**
- * Sube la imagen de ejemplo de un prompt (panel admin).
- * Path: prompt-images/{uuid}/example.webp
- * Retorna la URL de descarga pública (para usuarios autenticados).
- */
-export async function uploadPromptExample(file: File): Promise<string> {
-  const compressed = await compressImage(file, EXAMPLE_QUALITY, MAX_DIMENSION);
-  const uuid = crypto.randomUUID();
-  const fileRef = ref(storage, `prompt-images/${uuid}/example.webp`);
-  await uploadBytes(fileRef, compressed, { contentType: "image/jpeg" });
-  return getDownloadURL(fileRef);
 }

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { isAdmin } from "@/lib/auth";
+import { checkIsAdmin } from "@/lib/auth";
 
 interface AuthContextValue {
   user: User | null;
@@ -22,18 +22,21 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser]       = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    return onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      // El estado admin se resuelve contra Firestore (colección admins)
+      setIsAdmin(await checkIsAdmin(u));
       setLoading(false);
     });
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin: isAdmin(user) }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

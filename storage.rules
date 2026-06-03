@@ -21,11 +21,12 @@ service firebase.storage {
       allow write: if false;           // solo Cloud Functions (Admin SDK)
     }
 
-    // ─── Imágenes de ejemplo de prompts (subidas por el admin) ───────────
+    // ─── Imágenes de ejemplo de prompts ──────────────────────────────────
+    // Las miniaturas de estilos viven en /public/styles del repo; ya no se
+    // suben desde el cliente. Lectura libre para autenticados, escritura cerrada.
     match /prompt-images/{uuid}/{fileName} {
       allow read:  if request.auth != null;
-      allow write: if request.auth != null
-                   && request.auth.uid == "Fb7DhwOnApOl8vT4nF1MlQzE8pm2";
+      allow write: if false;
     }
   }
 }
