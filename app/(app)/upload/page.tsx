@@ -25,6 +25,7 @@ function useProcessingMessage(active: boolean): string {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 import { LogoLoader } from "@/components/LogoLoader";
+import { ImageWithLoader } from "@/components/ImageWithLoader";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { onSnapshot, doc, Timestamp } from "firebase/firestore";
@@ -540,12 +541,7 @@ export default function UploadPage() {
                             style={{ backgroundColor: "#C8BAA8" }} />
                           <span className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>{r.name}</span>
                         </div>
-                        <div className="rounded-2xl overflow-hidden"
-                          style={{ backgroundColor: "#F5F2EC" }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={r.httpsUrl} alt={r.name}
-                            className="w-full object-contain" loading="lazy" />
-                        </div>
+                        <ImageWithLoader src={r.httpsUrl} alt={r.name} />
                         <button
                           onClick={() => handleDownload(i, r.httpsUrl, r.name)}
                           disabled={os.dlLoading[r.name]}
