@@ -64,11 +64,10 @@ export default function EditPromptPage() {
       <h1 className="text-xl font-semibold tracking-tight mb-8">Editar prompt</h1>
       <PromptForm
         initialValues={{
-          name:            prompt.name,
-          description:     prompt.description,
-          prompt_text:     prompt.prompt_text,
-          active:          prompt.active,
-          exampleImageUrl: prompt.exampleImageUrl,
+          name:        prompt.name,
+          description: prompt.description,
+          prompt_text: prompt.prompt_text,
+          active:      prompt.active,
         }}
         onSubmit={handleSubmit}
         submitLabel="Guardar cambios"

@@ -431,7 +431,11 @@ export default function UploadPage() {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={styleImage(p.name)} alt={p.name}
                         className="w-full h-full object-cover"
-                        onError={e => { (e.target as HTMLImageElement).src = "/logo/logo.webp"; }} />
+                        onError={e => {
+                          const img = e.target as HTMLImageElement;
+                          img.onerror = null;            // evitar loop si logo.webp tampoco carga
+                          img.src = "/logo/logo.webp";
+                        }} />
                     </div>
                     <p className="text-[10px] font-bold uppercase tracking-wide text-center py-2 px-1 leading-tight"
                       style={{ color: isSelected ? "#3EBF85" : "#2D2B2D" }}>

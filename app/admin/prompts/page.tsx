@@ -111,10 +111,10 @@ export default function PromptsPage() {
               className="flex items-start gap-4 p-4 rounded-xl border border-zinc-100 hover:border-zinc-200 transition"
             >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm truncate">{p.name}</span>
+                <div className="flex items-start gap-2 mb-1 flex-wrap">
+                  <span className="font-semibold text-sm leading-snug">{p.name}</span>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${
                       p.active
                         ? "bg-emerald-50 text-emerald-700"
                         : "bg-zinc-100 text-zinc-500"

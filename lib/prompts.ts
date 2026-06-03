@@ -24,7 +24,8 @@ export interface Prompt {
   updatedAt: Date | null;
 }
 
-export type PromptInput = Omit<Prompt, "id" | "createdAt" | "updatedAt" | "createdBy">;
+// exampleImageUrl se excluye del input — las imágenes se sirven desde /public/styles/
+export type PromptInput = Omit<Prompt, "id" | "createdAt" | "updatedAt" | "createdBy" | "exampleImageUrl">;
 
 const COL = "prompts";
 
@@ -61,8 +62,12 @@ export async function createPrompt(data: PromptInput, userEmail: string): Promis
 }
 
 export async function updatePrompt(id: string, data: Partial<PromptInput>): Promise<void> {
+  // Filtrar undefined — Firestore los rechaza con error
+  const clean = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
   await updateDoc(doc(db, COL, id), {
-    ...data,
+    ...clean,
     updatedAt: serverTimestamp(),
   });
 }
