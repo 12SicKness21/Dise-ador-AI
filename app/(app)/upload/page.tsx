@@ -1,6 +1,29 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+
+// ── Mensajes animados durante el procesado de IA ──────────────────────────────
+const PROCESSING_STEPS = [
+  "Analizando la zapatilla...",
+  "Detectando forma y colores...",
+  "Aplicando el estilo...",
+  "Generando imagen con IA...",
+  "Ajustando los detalles finales...",
+] as const;
+
+function useProcessingMessage(active: boolean): string {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (!active) { setIdx(0); return; }
+    const t = setInterval(
+      () => setIdx(p => (p + 1) % PROCESSING_STEPS.length),
+      2600
+    );
+    return () => clearInterval(t);
+  }, [active]);
+  return PROCESSING_STEPS[idx];
+}
+// ─────────────────────────────────────────────────────────────────────────────
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { onSnapshot, doc, Timestamp } from "firebase/firestore";
@@ -50,6 +73,51 @@ function styleImage(name: string): string {
     .replace(/^-|-$/g, "");
   return `/styles/${slug}.webp`;
 }
+
+// ── Tarjeta de procesado con mensajes animados en tiempo real ────────────────
+function ProcessingCard({
+  os, preview, index,
+}: {
+  os: OrderState;
+  preview: string;
+  index: number;
+}) {
+  const isProcessing = os.order?.status === "processing";
+  const msg = useProcessingMessage(isProcessing);
+
+  const statusText =
+    !os.order || os.order.status === "pending"  ? "En cola..."  :
+    os.order.status === "processing"             ? msg           :
+    os.order.status === "done"                   ? "✓ Listo"    : "✗ Error";
+
+  const statusColor =
+    os.order?.status === "done"  ? "#3EBF85" :
+    os.order?.status === "error" ? "#F5856A" : "#B39C80";
+
+  const pending = !os.order || os.order.status === "pending" || os.order.status === "processing";
+
+  return (
+    <div className="rounded-2xl border p-4 flex items-center gap-3"
+      style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0"
+        style={{ backgroundColor: "#C8BAA8" }} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium" style={{ color: "#2D2B2D" }}>
+          Imagen {index + 1}
+        </p>
+        <p className="text-xs mt-0.5 truncate transition-all duration-500"
+          style={{ color: statusColor }}>
+          {statusText}
+        </p>
+      </div>
+      {pending && (
+        <Loader2 size={18} className="animate-spin shrink-0" style={{ color: "#A8C4D4" }} />
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function UploadPage() {
   const { user, isAdmin } = useAuth();
@@ -361,9 +429,9 @@ export default function UploadPage() {
                     <div className="w-full aspect-square overflow-hidden"
                       style={{ backgroundColor: "#E8DDD0" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.exampleImageUrl || styleImage(p.name)} alt={p.name}
+                      <img src={styleImage(p.name)} alt={p.name}
                         className="w-full h-full object-cover"
-                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        onError={e => { (e.target as HTMLImageElement).src = "/logo/logo.webp"; }} />
                     </div>
                     <p className="text-[10px] font-bold uppercase tracking-wide text-center py-2 px-1 leading-tight"
                       style={{ color: isSelected ? "#3EBF85" : "#2D2B2D" }}>
@@ -422,25 +490,7 @@ export default function UploadPage() {
         {phase === "processing" && (
           <div className="space-y-2">
             {orderStates.map((os, i) => (
-              <div key={os.id} className="rounded-2xl border p-4 flex items-center gap-3"
-                style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={previews[i]} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0"
-                  style={{ backgroundColor: "#C8BAA8" }} />
-                <div className="flex-1">
-                  <p className="text-xs font-medium" style={{ color: "#2D2B2D" }}>
-                    Imagen {i + 1}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: "#B39C80" }}>
-                    {!os.order || os.order.status === "pending" ? "En cola..." :
-                     os.order.status === "processing" ? "Procesando..." :
-                     os.order.status === "done" ? "✓ Listo" : "✗ Error"}
-                  </p>
-                </div>
-                {(!os.order || os.order.status === "pending" || os.order.status === "processing") && (
-                  <Loader2 size={18} className="animate-spin shrink-0" style={{ color: "#A8C4D4" }} />
-                )}
-              </div>
+              <ProcessingCard key={os.id} os={os} preview={previews[i]} index={i} />
             ))}
           </div>
         )}

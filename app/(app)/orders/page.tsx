@@ -18,7 +18,7 @@ import {
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface ResolvedResult { name: string; httpsUrl: string; }
-type OrderWithMeta = Order & { promptName?: string };
+type OrderWithMeta = Order & { promptName?: string; promptNames?: string[] };
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
 
@@ -107,7 +107,7 @@ function OrderListItem({
           {order.promptName && (
             <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0"
               style={{ backgroundColor: "#E8DDD0", color: "#B39C80" }}>
-              {order.promptName}
+              {(order.promptNames?.length ?? 0) > 1 ? "Varios modelos" : order.promptName}
             </span>
           )}
         </div>
@@ -217,10 +217,10 @@ function OrderDetail({
               <span className="text-sm font-mono font-bold" style={{ color: "#2D2B2D" }}>
                 #{order.id.slice(0, 8)}
               </span>
-              {order.promptName && (
+              {(order.promptName || (order.promptNames?.length ?? 0) > 0) && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide"
                   style={{ backgroundColor: "#E8DDD0", color: "#B39C80" }}>
-                  {order.promptName}
+                  {(order.promptNames?.length ?? 0) > 1 ? "Varios modelos" : order.promptName}
                 </span>
               )}
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto shrink-0"
@@ -322,21 +322,23 @@ function OrderDetail({
                             </div>
                           </div>
 
-                          {/* Controles: checkbox + descarga individual */}
+                          {/* Controles: checkbox (solo si hay varios) + descarga individual */}
                           <div className="flex flex-col items-center gap-2 shrink-0 pt-0.5">
 
-                            {/* Checkbox custom */}
-                            <button
-                              onClick={() => toggleCheck(r.name)}
-                              aria-label={isChecked ? "Deseleccionar" : "Seleccionar"}
-                              className="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all"
-                              style={{
-                                borderColor:     isChecked ? "#3EBF85" : "#C8BAA8",
-                                backgroundColor: isChecked ? "#3EBF85" : "white",
-                              }}
-                            >
-                              {isChecked && <Check size={12} className="text-white" strokeWidth={3} />}
-                            </button>
+                            {/* Checkbox custom — solo visible cuando hay más de 1 imagen */}
+                            {resolved.length > 1 && (
+                              <button
+                                onClick={() => toggleCheck(r.name)}
+                                aria-label={isChecked ? "Deseleccionar" : "Seleccionar"}
+                                className="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all"
+                                style={{
+                                  borderColor:     isChecked ? "#3EBF85" : "#C8BAA8",
+                                  backgroundColor: isChecked ? "#3EBF85" : "white",
+                                }}
+                              >
+                                {isChecked && <Check size={12} className="text-white" strokeWidth={3} />}
+                              </button>
+                            )}
 
                             {/* Descarga individual */}
                             <button
@@ -412,11 +414,11 @@ function OrdersContent() {
         const data = d.data();
         return {
           id:         d.id,
-          userId:     data.userId,
-          userEmail:  data.userEmail ?? "",
-          status:     data.status,
-          promptName: (data.promptNames as string[] | undefined)?.[0]
-                        ?? data.promptName ?? null,
+          userId:      data.userId,
+          userEmail:   data.userEmail ?? "",
+          status:      data.status,
+          promptNames: (data.promptNames as string[] | undefined) ?? (data.promptName ? [data.promptName as string] : []),
+          promptName:  (data.promptNames as string[] | undefined)?.[0] ?? data.promptName ?? null,
           createdAt:  data.createdAt instanceof Timestamp
                         ? data.createdAt.toDate() : null,
           error:   data.error ?? null,

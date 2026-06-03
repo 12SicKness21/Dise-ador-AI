@@ -104,7 +104,7 @@ export default function PromptsPage() {
           </button>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {prompts.map((p) => (
             <li
               key={p.id}
