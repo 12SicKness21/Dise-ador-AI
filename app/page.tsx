@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
@@ -312,10 +313,12 @@ export default function LandingPage() {
 
           <div className="hero-visual">
             <div className="ba" ref={baRef}>
+              {/* Slider interactivo: se mantiene <img> nativo porque el clip-path
+                  y la posición se manipulan por ref. Above-the-fold → carga eager. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="after" src="/images/despues-real.png" alt="Resultado profesional generado con Moonkey IA" />
+              <img className="after" src="/images/despues-real.png" alt="Resultado profesional generado con Moonkey IA" fetchPriority="high" decoding="async" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="before" ref={beforeRef} src="/images/antes-real.png" alt="Foto original tomada con el celular" />
+              <img className="before" ref={beforeRef} src="/images/antes-real.png" alt="Foto original tomada con el celular" fetchPriority="high" decoding="async" />
               <span className="lab lab-b">Antes · tu foto</span>
               <span className="lab lab-a">Después · Moonkey IA</span>
               <div className="tag">
@@ -392,8 +395,13 @@ export default function LandingPage() {
               { src: "/styles/modelo-agachado-urbano.webp", label: "Estilo urbano", n: "05" },
             ].map(({ src, label, n }) => (
               <div key={n} className="style-card reveal">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={label} />
+                <Image
+                  src={src}
+                  alt={label}
+                  fill
+                  sizes="(max-width:760px) 50vw, (max-width:980px) 33vw, 20vw"
+                  style={{ objectFit: "cover" }}
+                />
                 <div className="cap"><b>{n}</b> {label}</div>
               </div>
             ))}
@@ -410,17 +418,19 @@ export default function LandingPage() {
             <p>Desde sneakers hasta electrónica o moda: Moonkey entiende tu producto y lo pone en una escena que se ve hecha por un estudio profesional.</p>
           </div>
           <div className="results-grid">
+            {/* Nativo: el grid no define altura, depende de las dimensiones
+                intrínsecas de la imagen — next/image fill colapsaría las celdas. */}
             <div className="rcard big reveal"><span className="rt">Sneakers · Urbano</span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/hero.png" alt="Resultado sneaker" />
+              <img src="/images/hero.png" alt="Resultado sneaker" loading="lazy" decoding="async" />
             </div>
             <div className="rcard reveal"><span className="rt">Electrónica · Minimal</span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/catalog.png" alt="Resultado parlante" />
+              <img src="/images/catalog.png" alt="Resultado parlante" loading="lazy" decoding="async" />
             </div>
             <div className="rcard reveal"><span className="rt">Moda · Editorial</span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/design.png" alt="Resultado bolso" />
+              <img src="/images/design.png" alt="Resultado bolso" loading="lazy" decoding="async" />
             </div>
           </div>
         </div>
@@ -456,7 +466,7 @@ export default function LandingPage() {
       {/* CTA BAND */}
       <section className="cta-band" id="probar">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="monkey" src="/logo/logo.webp" alt="" aria-hidden="true" />
+        <img className="monkey" src="/logo/logo.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" />
         <div className="wrap cta-inner reveal">
           <h2>Empieza a vender con mejores fotos hoy.</h2>
           <p>Prueba Moonkey Studio IA gratis y transforma tu primera foto en segundos. ¿Tienes dudas? Escríbenos por WhatsApp y te ayudamos.</p>
@@ -480,7 +490,7 @@ export default function LandingPage() {
             <div className="foot-brand">
               <div className="brand">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo/Logo_circulo.webp" alt="Moonkey" style={{ width: 40, height: 40, borderRadius: "50%" }} />
+                <img src="/logo/Logo_circulo.webp" alt="Moonkey" style={{ width: 40, height: 40, borderRadius: "50%" }} loading="lazy" decoding="async" />
                 <span className="bt" style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
                   <b style={{ fontFamily: "var(--disp)", fontWeight: 800, fontSize: 18, color: "#fff" }}>Moonkey</b>
                   <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".32em", color: "var(--amarillo)", textTransform: "uppercase", marginTop: 2 }}>Studio IA</span>
