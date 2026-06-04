@@ -17,7 +17,7 @@ export function LogoLoader({ text = "Preparando tu imagen..." }: { text?: string
           className="absolute inset-0 rounded-full"
           style={{
             background:
-              "conic-gradient(from 0deg, #A8C4D4 0%, #3EBF85 30%, #F5F2EC 55%, #F5F2EC 100%)",
+              "conic-gradient(from 0deg, #2D2B2D 0%, #2D2B2D 30%, #F5F2EC 55%, #F5F2EC 100%)",
             animation: "spin 1.8s linear infinite",
           }}
         />
