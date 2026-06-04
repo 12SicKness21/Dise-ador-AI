@@ -10,6 +10,13 @@ service cloud.firestore {
              && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
     }
 
+    // ¿La cuenta del usuario está activa? Si no tiene perfil (cuentas previas
+    // a esta función) se considera activa; solo active==false la bloquea.
+    function isActive() {
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active != false;
+    }
+
     // ─── Administradores ─────────────────────────────────────────────────────
     // get:   cada usuario puede leer SU PROPIO doc (para saber si es admin) y
     //        los admins pueden leer cualquiera.
@@ -18,6 +25,17 @@ service cloud.firestore {
     match /admins/{email} {
       allow get:   if request.auth != null
                    && (email == request.auth.token.email || isAdmin());
+      allow list:  if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ─── Usuarios / Clientes ─────────────────────────────────────────────────
+    // get:   cada usuario lee su propio perfil; los admins leen cualquiera.
+    // list:  solo admins (pantalla de gestión de clientes).
+    // write: solo admins (suspender, cambiar rol). La creación la hace la
+    //        Cloud Function vía Admin SDK (omite reglas).
+    match /users/{uid} {
+      allow get:   if request.auth != null && (uid == request.auth.uid || isAdmin());
       allow list:  if isAdmin();
       allow write: if isAdmin();
     }
@@ -38,6 +56,7 @@ service cloud.firestore {
                   && (resource.data.userId == request.auth.uid || isAdmin());
 
       allow create: if request.auth != null
+                    && isActive()
                     && request.resource.data.userId   == request.auth.uid
                     && request.resource.data.userEmail is string
                     && request.resource.data.status   == "pending"

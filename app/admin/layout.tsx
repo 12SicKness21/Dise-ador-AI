@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/components/AuthProvider";
 import { auth } from "@/lib/firebase";
-import { LogOut, List, BarChart3, ShieldCheck } from "lucide-react";
+import { LogOut, List, BarChart3, ShieldCheck, Users } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const NAV = [
   { href: "/admin/prompts", label: "Prompts",        icon: List },
+  { href: "/admin/clients", label: "Clientes",        icon: Users },
   { href: "/admin/stats",   label: "Estadísticas",   icon: BarChart3 },
   { href: "/admin/admins",  label: "Administradores", icon: ShieldCheck },
 ];
