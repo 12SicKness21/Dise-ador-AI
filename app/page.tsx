@@ -176,7 +176,7 @@ const CSS = `
 
 const WA_ICON = (
   <svg viewBox="0 0 24 24" fill="currentColor">
-    <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 018.413 3.488 11.82 11.82 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.29.173-1.414z"/>
+    <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 018.413 3.488 11.82 11.82 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.29.173-1.414z" />
   </svg>
 );
 
@@ -320,7 +320,7 @@ export default function LandingPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img className="before" ref={beforeRef} src="/images/antes-real.png" alt="Foto original tomada con el celular" fetchPriority="high" decoding="async" />
               <span className="lab lab-b">Antes · tu foto</span>
-              <span className="lab lab-a">Después · Moonkey IA</span>
+              <span className="lab lab-a">Después · Moonkey Studio</span>
               <div className="tag">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logo/Logo_circulo.webp" alt="" />
@@ -357,22 +357,22 @@ export default function LandingPage() {
           </div>
           <div className="steps">
             <div className="step reveal">
-              <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+              <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg></div>
               <div className="num">01</div>
               <h3>Sube tu foto</h3>
               <p>Toma una foto con tu celular o elige una de tu galería. Funciona con cualquier producto: zapatillas, ropa, accesorios, electrónica y más.</p>
             </div>
             <div className="step reveal">
-              <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg></div>
+              <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z" /></svg></div>
               <div className="num">02</div>
               <h3>Elige el estilo</h3>
-              <p>Fondo blanco para catálogo, un modelo usándolo, ambiente urbano o running. Puedes seleccionar varios estilos a la vez de una sola foto.</p>
+              <p>Fondo blanco para catálogo, un modelo usándolo, ambiente urbano o running. De una foto a varios estilos prediseñados o puedes solicitar tus estilos propios.</p>
             </div>
             <div className="step reveal">
-              <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+              <div className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></div>
               <div className="num">03</div>
               <h3>Descarga y vende</h3>
-              <p>La IA genera tu imagen en segundos. Descárgala en alta calidad y úsala en tu tienda, marketplace o redes sociales al instante.</p>
+              <p>Generamos tu imagen en segundos. Descárgala en alta calidad y úsala en tu tienda, marketplace o redes sociales al instante.</p>
             </div>
           </div>
         </div>
@@ -415,7 +415,7 @@ export default function LandingPage() {
           <div className="sec-head reveal">
             <span className="eyebrow">Resultados reales</span>
             <h2>Funciona con cualquier producto.</h2>
-            <p>Desde sneakers hasta electrónica o moda: Moonkey entiende tu producto y lo pone en una escena que se ve hecha por un estudio profesional.</p>
+            <p>Desde sneakers hasta electrónica o moda: Moonkey Studio entiende tu producto y lo pone en una escena que se ve hecha por un estudio profesional.</p>
           </div>
           <div className="results-grid">
             {/* Nativo: el grid no define altura, depende de las dimensiones
@@ -440,22 +440,22 @@ export default function LandingPage() {
       <section className="sec" id="ventajas" style={{ paddingTop: 0 }}>
         <div className="wrap">
           <div className="sec-head reveal">
-            <span className="eyebrow">Por qué Moonkey</span>
+            <span className="eyebrow">Por qué Moonkey Studio</span>
             <h2>Tu estudio fotográfico, dentro del celular.</h2>
           </div>
           <div className="feat">
             <div className="f reveal">
-              <div className="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <div className="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg></div>
               <h3>Rápido de verdad</h3>
               <p>Resultados en segundos. Genera fotos para todo tu catálogo en una tarde, no en semanas.</p>
             </div>
             <div className="f reveal">
-              <div className="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div className="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></div>
               <h3>Sin complicaciones</h3>
-              <p>Nada de estudio, luces ni programas de edición. Si sabes tomar una foto, sabes usar Moonkey.</p>
+              <p>Nada de estudio, luces ni programas de edición. Si sabes tomar una foto, sabes usar Moonkey Studio.</p>
             </div>
             <div className="f reveal">
-              <div className="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></div>
+              <div className="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /></svg></div>
               <h3>Organizado por proyectos</h3>
               <p>Cada pedido queda guardado en tu historial. Vuelve cuando quieras a descargar tus imágenes.</p>
             </div>
@@ -477,7 +477,7 @@ export default function LandingPage() {
             </a>
           </div>
           <div className="phone">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
             Atención por WhatsApp · Perú
           </div>
         </div>
@@ -509,12 +509,11 @@ export default function LandingPage() {
               <h4>Contacto</h4>
               <a href="https://wa.me/51983567826" target="_blank" rel="noopener">WhatsApp · +51 983 567 826</a>
               <a href="/upload">Probar la app</a>
-              <p>Perú</p>
             </div>
           </div>
           <div className="foot-bottom">
             <p>© 2026 Moonkey Studio IA. Todos los derechos reservados.</p>
-            <p>Hecho con IA · Diseñado para vender</p>
+            <p>Diseñado para vender</p>
           </div>
         </div>
       </footer>

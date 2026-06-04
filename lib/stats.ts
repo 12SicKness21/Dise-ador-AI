@@ -20,7 +20,7 @@ export async function getUsageStats(): Promise<UsageStats> {
   let totalGenerations = 0;
   let doneOrders = 0;
   let errorOrders = 0;
-  const userMap  = new Map<string, number>();
+  const userMap = new Map<string, number>();
   const styleMap = new Map<string, number>();
 
   snap.forEach((d) => {
@@ -30,10 +30,10 @@ export async function getUsageStats(): Promise<UsageStats> {
       : data.promptName ? [data.promptName] : [];
 
     totalGenerations += styles.length;
-    if (data.status === "done")  doneOrders++;
+    if (data.status === "done") doneOrders++;
     if (data.status === "error") errorOrders++;
 
-    const email = data.userEmail || "desconocido";
+    const email = data.userEmail || "Pruebas anteriores";
     userMap.set(email, (userMap.get(email) ?? 0) + styles.length);
 
     for (const s of styles) {

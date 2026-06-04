@@ -4,10 +4,10 @@ import { useRef, useState, useEffect } from "react";
 
 // ── Mensajes animados durante el procesado de IA ──────────────────────────────
 const PROCESSING_STEPS = [
-  "Analizando la zapatilla...",
+  "Analizando el producto...",
   "Detectando forma y colores...",
   "Aplicando el estilo...",
-  "Generando imagen con IA...",
+  "Generando imagen...",
   "Ajustando los detalles finales...",
 ] as const;
 
@@ -88,13 +88,13 @@ function ProcessingCard({
   const msg = useProcessingMessage(isProcessing);
 
   const statusText =
-    !os.order || os.order.status === "pending"  ? "En cola..."  :
-    os.order.status === "processing"             ? msg           :
-    os.order.status === "done"                   ? "✓ Listo"    : "✗ Error";
+    !os.order || os.order.status === "pending" ? "En cola..." :
+      os.order.status === "processing" ? msg :
+        os.order.status === "done" ? "✓ Listo" : "✗ Error";
 
   const statusColor =
-    os.order?.status === "done"  ? "#3EBF85" :
-    os.order?.status === "error" ? "#F5856A" : "#B39C80";
+    os.order?.status === "done" ? "#3EBF85" :
+      os.order?.status === "error" ? "#F5856A" : "#B39C80";
 
   const pending = !os.order || os.order.status === "pending" || os.order.status === "processing";
 
@@ -128,15 +128,15 @@ export default function UploadPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
-  const [files, setFiles]     = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
 
-  const [phase, setPhase]         = useState<Phase>("select");
+  const [phase, setPhase] = useState<Phase>("select");
   const [progresses, setProgresses] = useState<number[]>([]);
   const [orderStates, setOrderStates] = useState<OrderState[]>([]);
-  const [errorMsg, setErrorMsg]   = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     getActivePrompts().then(setPrompts).catch(console.error);
@@ -166,7 +166,7 @@ export default function UploadPage() {
       })
     );
     return () => unsubs.forEach(u => u());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderStates.map(s => s.id).join(",")]);
 
   function checkAllDone() {
@@ -205,7 +205,7 @@ export default function UploadPage() {
         });
       });
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderStates.map(s => s.order?.status).join(",")]);
 
   function addFiles(newFiles: File[]) {
@@ -327,257 +327,257 @@ export default function UploadPage() {
           {/* ── COLUMNA IZQUIERDA: controles ── */}
           <div className="space-y-5">
 
-        {/* ── SUBIR IMAGEN(ES) ── */}
-        <section>
-          {/* Input siempre en el DOM para que inputRef.current nunca sea null */}
-          <input ref={inputRef} type="file" accept="image/*" multiple className="sr-only"
-            onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} />
+            {/* ── SUBIR IMAGEN(ES) ── */}
+            <section>
+              {/* Input siempre en el DOM para que inputRef.current nunca sea null */}
+              <input ref={inputRef} type="file" accept="image/*" multiple className="sr-only"
+                onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} />
 
-          <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
-            style={{ color: "#2D2B2D" }}>
-            {files.length > 1 ? `${files.length} imágenes seleccionadas` : "Subir imagen"}
-          </p>
+              <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
+                style={{ color: "#2D2B2D" }}>
+                {files.length > 1 ? `${files.length} imágenes seleccionadas` : "Subir imagen"}
+              </p>
 
-          {phase === "select" ? (
-            /* Sin imágenes: botones cámara / galería */
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
-                style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
-                <Camera size={22} style={{ color: "#A8C4D4" }} />
-                <span className="text-sm font-medium" style={{ color: "#2D2B2D" }}>Cámara</span>
-                <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only"
-                  onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} />
-              </label>
-              <label onClick={() => inputRef.current?.click()}
-                className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
-                style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
-                <ImagePlus size={22} style={{ color: "#A8C4D4" }} />
-                <span className="text-sm font-medium" style={{ color: "#2D2B2D" }}>Galería</span>
-              </label>
-            </div>
-          ) : (
-            /* Con imágenes: fila de thumbnails */
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {previews.map((url, i) => (
-                <div key={i} className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden"
-                  style={{ backgroundColor: "#C8BAA8" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`Imagen ${i + 1}`} className="w-full h-full object-cover" />
-                  {phase === "uploading" && (
-                    <div className="absolute inset-0 bg-black/40 flex items-end">
-                      <div className="w-full h-1 bg-white/30">
-                        <div className="h-full transition-all" style={{
-                          width: `${progresses[i] ?? 0}%`,
-                          backgroundColor: "#A8C4D4",
-                        }} />
-                      </div>
+              {phase === "select" ? (
+                /* Sin imágenes: botones cámara / galería */
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
+                    style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
+                    <Camera size={22} style={{ color: "#A8C4D4" }} />
+                    <span className="text-sm font-medium" style={{ color: "#2D2B2D" }}>Cámara</span>
+                    <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only"
+                      onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} />
+                  </label>
+                  <label onClick={() => inputRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
+                    style={{ backgroundColor: "white", borderColor: "#C8BAA8" }}>
+                    <ImagePlus size={22} style={{ color: "#A8C4D4" }} />
+                    <span className="text-sm font-medium" style={{ color: "#2D2B2D" }}>Galería</span>
+                  </label>
+                </div>
+              ) : (
+                /* Con imágenes: fila de thumbnails */
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {previews.map((url, i) => (
+                    <div key={i} className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden"
+                      style={{ backgroundColor: "#C8BAA8" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Imagen ${i + 1}`} className="w-full h-full object-cover" />
+                      {phase === "uploading" && (
+                        <div className="absolute inset-0 bg-black/40 flex items-end">
+                          <div className="w-full h-1 bg-white/30">
+                            <div className="h-full transition-all" style={{
+                              width: `${progresses[i] ?? 0}%`,
+                              backgroundColor: "#A8C4D4",
+                            }} />
+                          </div>
+                        </div>
+                      )}
+                      {(phase === "ready") && (
+                        <button onClick={() => removeFile(i)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: "#2D2B2D" }}>
+                          <X size={10} className="text-white" />
+                        </button>
+                      )}
                     </div>
-                  )}
-                  {(phase === "ready") && (
-                    <button onClick={() => removeFile(i)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: "#2D2B2D" }}>
-                      <X size={10} className="text-white" />
+                  ))}
+                  {/* Botón agregar más — button en vez de label para evitar bugs de browser */}
+                  {phase === "ready" && (
+                    <button
+                      type="button"
+                      className="shrink-0 w-20 h-20 rounded-xl flex flex-col items-center justify-center gap-1 transition border-2 border-dashed active:scale-95"
+                      style={{ borderColor: "#3EBF85", backgroundColor: "#E8F8F1" }}
+                      onClick={() => {
+                        if (inputRef.current) {
+                          inputRef.current.value = ""; // reset para permitir reselección
+                          inputRef.current.click();
+                        }
+                      }}>
+                      <Plus size={18} style={{ color: "#3EBF85" }} />
+                      <span className="text-[10px] font-semibold" style={{ color: "#3EBF85" }}>Agregar</span>
                     </button>
                   )}
                 </div>
-              ))}
-              {/* Botón agregar más — button en vez de label para evitar bugs de browser */}
-              {phase === "ready" && (
-                <button
-                  type="button"
-                  className="shrink-0 w-20 h-20 rounded-xl flex flex-col items-center justify-center gap-1 transition border-2 border-dashed active:scale-95"
-                  style={{ borderColor: "#3EBF85", backgroundColor: "#E8F8F1" }}
-                  onClick={() => {
-                    if (inputRef.current) {
-                      inputRef.current.value = ""; // reset para permitir reselección
-                      inputRef.current.click();
-                    }
-                  }}>
-                  <Plus size={18} style={{ color: "#3EBF85" }} />
-                  <span className="text-[10px] font-semibold" style={{ color: "#3EBF85" }}>Agregar</span>
-                </button>
               )}
-            </div>
-          )}
-        </section>
+            </section>
 
-        {/* ── ESTILOS — selección múltiple ── */}
-        {(phase === "ready" || phase === "uploading") && prompts.length > 0 && (
-          <section>
-            <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
-              style={{ color: "#2D2B2D" }}>
-              {selected.length === 0
-                ? "Elegir estilos"
-                : `${selected.length} estilo${selected.length > 1 ? "s" : ""} seleccionado${selected.length > 1 ? "s" : ""}`}
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {prompts.map((p) => {
-                const isSelected = selected.includes(p.name);
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelected(prev =>
-                      prev.includes(p.name)
-                        ? prev.filter(n => n !== p.name)   // deseleccionar
-                        : [...prev, p.name]                 // seleccionar
-                    )}
-                    className="flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97] relative"
-                    style={{
-                      backgroundColor: "white",
-                      border: isSelected ? "2.5px solid #3EBF85" : "1.5px solid #C8BAA8",
-                      boxShadow: isSelected ? "0 0 0 3px #3EBF8520" : "none",
-                    }}>
-                    <div className="w-full aspect-square overflow-hidden"
-                      style={{ backgroundColor: "#E8DDD0" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={styleImage(p.name)} alt={p.name}
-                        className="w-full h-full object-cover"
-                        onError={e => {
-                          const img = e.target as HTMLImageElement;
-                          img.onerror = null;            // evitar loop si logo.webp tampoco carga
-                          img.src = "/logo/logo.webp";
-                        }} />
-                    </div>
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-center py-2 px-1 leading-tight"
-                      style={{ color: isSelected ? "#3EBF85" : "#2D2B2D" }}>
-                      {p.name}
-                    </p>
-                    {isSelected && (
-                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: "#3EBF85" }}>
-                        <Check size={11} className="text-white" strokeWidth={3} />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {selected.length === 0 && (
-              <p className="text-xs mt-2 text-center" style={{ color: "#B39C80" }}>
-                Selecciona al menos un estilo para continuar
+            {/* ── ESTILOS — selección múltiple ── */}
+            {(phase === "ready" || phase === "uploading") && prompts.length > 0 && (
+              <section>
+                <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
+                  style={{ color: "#2D2B2D" }}>
+                  {selected.length === 0
+                    ? "Elegir estilos"
+                    : `${selected.length} estilo${selected.length > 1 ? "s" : ""} seleccionado${selected.length > 1 ? "s" : ""}`}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {prompts.map((p) => {
+                    const isSelected = selected.includes(p.name);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelected(prev =>
+                          prev.includes(p.name)
+                            ? prev.filter(n => n !== p.name)   // deseleccionar
+                            : [...prev, p.name]                 // seleccionar
+                        )}
+                        className="flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97] relative"
+                        style={{
+                          backgroundColor: "white",
+                          border: isSelected ? "2.5px solid #3EBF85" : "1.5px solid #C8BAA8",
+                          boxShadow: isSelected ? "0 0 0 3px #3EBF8520" : "none",
+                        }}>
+                        <div className="w-full aspect-square overflow-hidden"
+                          style={{ backgroundColor: "#E8DDD0" }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={styleImage(p.name)} alt={p.name}
+                            className="w-full h-full object-cover"
+                            onError={e => {
+                              const img = e.target as HTMLImageElement;
+                              img.onerror = null;            // evitar loop si logo.webp tampoco carga
+                              img.src = "/logo/logo.webp";
+                            }} />
+                        </div>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-center py-2 px-1 leading-tight"
+                          style={{ color: isSelected ? "#3EBF85" : "#2D2B2D" }}>
+                          {p.name}
+                        </p>
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: "#3EBF85" }}>
+                            <Check size={11} className="text-white" strokeWidth={3} />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selected.length === 0 && (
+                  <p className="text-xs mt-2 text-center" style={{ color: "#B39C80" }}>
+                    Selecciona al menos un estilo para continuar
+                  </p>
+                )}
+              </section>
+            )}
+
+            {/* Error */}
+            {errorMsg && (
+              <div className="flex items-start gap-2 p-3 rounded-xl"
+                style={{ backgroundColor: "#FEF0ED", border: "1px solid #F5856A33" }}>
+                <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
+                <p className="text-sm" style={{ color: "#C45A42" }}>{errorMsg}</p>
+              </div>
+            )}
+
+            {/* ── GENERAR IMAGEN ── */}
+            {phase === "ready" && (
+              <button onClick={handleGenerate} disabled={!canGenerate}
+                className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white"
+                style={{ backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8", cursor: canGenerate ? "pointer" : "not-allowed" }}>
+                {files.length > 1 || selected.length > 1
+                  ? `GENERAR ${files.length * selected.length} IMAGEN${files.length * selected.length > 1 ? "ES" : ""}`
+                  : "GENERAR IMAGEN"}
+              </button>
+            )}
+
+            {/* Subiendo */}
+            {phase === "uploading" && (
+              <div className="w-full h-14 rounded-full flex items-center justify-center gap-2.5 text-white"
+                style={{ backgroundColor: "#2D2B2D" }}>
+                <Loader2 size={16} className="animate-spin" />
+                <span className="font-bold text-sm tracking-[.12em]">
+                  SUBIENDO {files.length > 1 ? `(${files.length})` : ""}...
+                </span>
+              </div>
+            )}
+
+            {/* Procesando */}
+            {phase === "processing" && (
+              <div className="space-y-2">
+                {orderStates.map((os, i) => (
+                  <ProcessingCard key={os.id} os={os} preview={previews[i]} index={i} />
+                ))}
+              </div>
+            )}
+
+
+            {(phase === "select" || phase === "ready") && (
+              <p className="text-center text-xs pt-1">
+                <a href="/orders" className="hover:opacity-70 transition" style={{ color: "#8DAF9A" }}>
+                  Ver pedidos anteriores →
+                </a>
               </p>
             )}
-          </section>
-        )}
 
-        {/* Error */}
-        {errorMsg && (
-          <div className="flex items-start gap-2 p-3 rounded-xl"
-            style={{ backgroundColor: "#FEF0ED", border: "1px solid #F5856A33" }}>
-            <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
-            <p className="text-sm" style={{ color: "#C45A42" }}>{errorMsg}</p>
-          </div>
-        )}
+          </div>{/* fin columna izquierda */}
 
-        {/* ── GENERAR IMAGEN ── */}
-        {phase === "ready" && (
-          <button onClick={handleGenerate} disabled={!canGenerate}
-            className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white"
-            style={{ backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8", cursor: canGenerate ? "pointer" : "not-allowed" }}>
-            {files.length > 1 || selected.length > 1
-              ? `GENERAR ${files.length * selected.length} IMAGEN${files.length * selected.length > 1 ? "ES" : ""}`
-              : "GENERAR IMAGEN"}
-          </button>
-        )}
+          {/* ── COLUMNA DERECHA: resultados ── */}
+          <div className="mt-5 lg:mt-0">
 
-        {/* Subiendo */}
-        {phase === "uploading" && (
-          <div className="w-full h-14 rounded-full flex items-center justify-center gap-2.5 text-white"
-            style={{ backgroundColor: "#2D2B2D" }}>
-            <Loader2 size={16} className="animate-spin" />
-            <span className="font-bold text-sm tracking-[.12em]">
-              SUBIENDO {files.length > 1 ? `(${files.length})` : ""}...
-            </span>
-          </div>
-        )}
-
-        {/* Procesando */}
-        {phase === "processing" && (
-          <div className="space-y-2">
-            {orderStates.map((os, i) => (
-              <ProcessingCard key={os.id} os={os} preview={previews[i]} index={i} />
-            ))}
-          </div>
-        )}
-
-
-          {(phase === "select" || phase === "ready") && (
-            <p className="text-center text-xs pt-1">
-              <a href="/orders" className="hover:opacity-70 transition" style={{ color: "#8DAF9A" }}>
-                Ver pedidos anteriores →
-              </a>
-            </p>
-          )}
-
-        </div>{/* fin columna izquierda */}
-
-        {/* ── COLUMNA DERECHA: resultados ── */}
-        <div className="mt-5 lg:mt-0">
-
-          {/* Resultados */}
-          {(phase === "done" || (phase === "processing" && allDone)) && (
-            <section>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {orderStates.map((os, i) =>
-                  os.resolving ? (
-                    <div key={os.id} className="rounded-2xl" style={{ backgroundColor: "white" }}>
-                      <LogoLoader text="Preparando tu imagen..." />
-                    </div>
-                  ) : os.order?.status === "error" ? (
-                    <div key={os.id} className="flex items-start gap-2 p-3 rounded-xl"
-                      style={{ backgroundColor: "#FEF0ED" }}>
-                      <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
-                      <p className="text-sm" style={{ color: "#C45A42" }}>
-                        {os.order.error ?? "Error al generar."}
-                      </p>
-                    </div>
-                  ) : os.results.length > 0 ? (
-                    os.results.map(r => (
-                      <div key={`${os.id}-${r.name}`} className="space-y-2.5">
-                        <div className="flex items-center gap-2 mb-1">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={previews[i]} alt="" className="w-7 h-7 rounded-lg object-cover"
-                            style={{ backgroundColor: "#C8BAA8" }} />
-                          <span className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>{r.name}</span>
-                        </div>
-                        <ImageWithLoader src={r.httpsUrl} alt={r.name} />
-                        <button
-                          onClick={() => handleDownload(i, r.httpsUrl, r.name)}
-                          disabled={os.dlLoading[r.name]}
-                          className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-                          style={{ backgroundColor: "#A8C4D4", color: "#2D2B2D" }}>
-                          {os.dlLoading[r.name] ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-                          DESCARGAR IMAGEN
-                        </button>
+            {/* Resultados */}
+            {(phase === "done" || (phase === "processing" && allDone)) && (
+              <section>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {orderStates.map((os, i) =>
+                    os.resolving ? (
+                      <div key={os.id} className="rounded-2xl" style={{ backgroundColor: "white" }}>
+                        <LogoLoader text="Preparando tu imagen..." />
                       </div>
-                    ))
-                  ) : (
-                    <div key={os.id} className="rounded-2xl" style={{ backgroundColor: "white" }}>
-                      <LogoLoader text="Preparando tu imagen..." />
-                    </div>
-                  )
-                )}
-              </div>
+                    ) : os.order?.status === "error" ? (
+                      <div key={os.id} className="flex items-start gap-2 p-3 rounded-xl"
+                        style={{ backgroundColor: "#FEF0ED" }}>
+                        <AlertCircle size={14} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
+                        <p className="text-sm" style={{ color: "#C45A42" }}>
+                          {os.order.error ?? "Error al generar."}
+                        </p>
+                      </div>
+                    ) : os.results.length > 0 ? (
+                      os.results.map(r => (
+                        <div key={`${os.id}-${r.name}`} className="space-y-2.5">
+                          <div className="flex items-center gap-2 mb-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={previews[i]} alt="" className="w-7 h-7 rounded-lg object-cover"
+                              style={{ backgroundColor: "#C8BAA8" }} />
+                            <span className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>{r.name}</span>
+                          </div>
+                          <ImageWithLoader src={r.httpsUrl} alt={r.name} />
+                          <button
+                            onClick={() => handleDownload(i, r.httpsUrl, r.name)}
+                            disabled={os.dlLoading[r.name]}
+                            className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                            style={{ backgroundColor: "#A8C4D4", color: "#2D2B2D" }}>
+                            {os.dlLoading[r.name] ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                            DESCARGAR IMAGEN
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div key={os.id} className="rounded-2xl" style={{ backgroundColor: "white" }}>
+                        <LogoLoader text="Preparando tu imagen..." />
+                      </div>
+                    )
+                  )}
+                </div>
 
+                <button onClick={handleClear}
+                  className="w-full text-sm py-4 text-center transition hover:opacity-70 mt-2"
+                  style={{ color: "#2D2B2D" }}>
+                  ← Nueva foto
+                </button>
+              </section>
+            )}
+
+            {/* Error total */}
+            {phase === "error" && (
               <button onClick={handleClear}
-                className="w-full text-sm py-4 text-center transition hover:opacity-70 mt-2"
-                style={{ color: "#2D2B2D" }}>
-                ← Nueva foto
+                className="w-full text-sm py-1 text-center hover:opacity-70 transition"
+                style={{ color: "#A8C4D4" }}>
+                ← Intentar de nuevo
               </button>
-            </section>
-          )}
+            )}
 
-          {/* Error total */}
-          {phase === "error" && (
-            <button onClick={handleClear}
-              className="w-full text-sm py-1 text-center hover:opacity-70 transition"
-              style={{ color: "#A8C4D4" }}>
-              ← Intentar de nuevo
-            </button>
-          )}
-
-        </div>{/* fin columna derecha */}
+          </div>{/* fin columna derecha */}
 
         </div>
       </div>
