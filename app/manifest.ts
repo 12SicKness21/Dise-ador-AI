@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Diseñador Studio",
     short_name: "Diseñador",
-    description: "Genera fotos profesionales de tus zapatillas con IA",
+    description: "Genera fotos profesionales de tus productos",
     start_url: "/",
     display: "standalone",
     background_color: "#F5F2EC",
