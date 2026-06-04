@@ -1,10 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
-import { Eye, EyeOff } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
+
+/** Traduce los códigos de error de Firebase Auth a mensajes claros en español. */
+function authErrorMessage(code: string): string {
+  switch (code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+      return "Email o contraseña incorrectos.";
+    case "auth/invalid-email":
+      return "El email no tiene un formato válido.";
+    case "auth/user-disabled":
+      return "Esta cuenta está deshabilitada. Contacta al administrador.";
+    case "auth/too-many-requests":
+      return "Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.";
+    case "auth/network-request-failed":
+      return "Error de conexión. Revisa tu internet e intenta de nuevo.";
+    default:
+      return "No se pudo iniciar sesión. Intenta de nuevo.";
+  }
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -19,10 +40,20 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+
+      // Verificar que la cuenta no esté suspendida (active === false)
+      const snap = await getDoc(doc(db, "users", cred.user.uid));
+      if (snap.exists() && snap.data().active === false) {
+        await signOut(auth);
+        setError("Tu cuenta está suspendida. Contacta al administrador para reactivarla.");
+        return;
+      }
+
       router.replace("/upload");
-    } catch {
-      setError("Email o contraseña incorrectos.");
+    } catch (err) {
+      const code = (err as { code?: string })?.code ?? "";
+      setError(authErrorMessage(code));
     } finally {
       setLoading(false);
     }
@@ -83,7 +114,10 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50">
+              <AlertCircle size={15} className="mt-0.5 shrink-0 text-red-500" />
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
           )}
 
           <button
