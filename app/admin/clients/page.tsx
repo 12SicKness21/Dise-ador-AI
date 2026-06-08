@@ -4,13 +4,15 @@ import { useEffect, useState } from "react";
 import {
   Loader2, UserPlus, Trash2, AlertCircle, Eye, EyeOff,
   ShieldCheck, User, Ban, CheckCircle2, KeyRound, CalendarClock, LogIn, X,
+  Zap, RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import {
   getClients, createClient, setClientActive, setClientRole, deleteClient,
-  setClientPassword,
+  setClientPassword, setClientPlan,
   type ClientProfile, type Role,
 } from "@/lib/users";
+import { PLAN_LIST, PLANS, CURRENCY, planName, type PlanKey } from "@/lib/plans";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "—";
@@ -62,6 +64,30 @@ export default function ClientsPage() {
       setPwError("No se pudo cambiar la contraseña.");
     } finally {
       setPwBusy(false);
+    }
+  }
+
+  // Activación de plan inline
+  const [planUid, setPlanUid] = useState<string | null>(null);
+  const [planBusy, setPlanBusy] = useState<PlanKey | null>(null);
+
+  async function handleActivatePlan(c: ClientProfile, key: PlanKey) {
+    const p = PLANS[key];
+    const ok = confirm(
+      key === "free"
+        ? `¿Pasar a ${c.email} al plan Gratis con ${p.credits} créditos?`
+        : `¿Activar plan ${p.name} (${CURRENCY} ${p.price}/mes) para ${c.email}?\n\nSe le otorgarán ${p.credits} créditos y la renovación quedará fijada en 1 mes.`
+    );
+    if (!ok) return;
+    setPlanBusy(key); setError("");
+    try {
+      await setClientPlan(c.uid, key);
+      await load();
+      setPlanUid(null);
+    } catch {
+      setError("No se pudo activar el plan.");
+    } finally {
+      setPlanBusy(null);
     }
   }
 
@@ -230,6 +256,24 @@ export default function ClientsPage() {
                   <p className="text-xs text-zinc-400">
                     {c.role === "admin" ? "Administrador" : "Cliente"} · creado por {c.createdBy}
                   </p>
+                  {/* Plan + créditos */}
+                  {c.role !== "admin" && (
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ backgroundColor: "#EBF5F9", color: "#2E6F8F" }}>
+                        {planName(c.plan)}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] font-medium"
+                        style={{ color: c.credits <= 0 ? "#C45A42" : "#2E9E6C" }}>
+                        <Zap size={11} fill="currentColor" /> {c.credits} créditos
+                      </span>
+                      {c.planRenewsAt && (
+                        <span className="flex items-center gap-1 text-[11px] text-zinc-400">
+                          <RefreshCw size={10} /> Renueva {fmtDate(c.planRenewsAt)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {/* Fechas */}
                   <div className="flex items-center gap-4 mt-1.5 flex-wrap">
                     <span className="flex items-center gap-1 text-[11px] text-zinc-500">
@@ -245,6 +289,15 @@ export default function ClientsPage() {
 
                 {/* Acciones */}
                 <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => planUid === c.uid ? setPlanUid(null) : (setPlanUid(c.uid), setPwUid(null))}
+                    disabled={busyUid === c.uid}
+                    title="Activar plan / créditos"
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition disabled:opacity-30 ${
+                      planUid === c.uid
+                        ? "text-emerald-600 bg-emerald-50"
+                        : "text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50"}`}>
+                    <Zap size={15} />
+                  </button>
                   <button onClick={() => pwUid === c.uid ? setPwUid(null) : openPwForm(c.uid)}
                     disabled={busyUid === c.uid}
                     title="Cambiar contraseña"
@@ -326,6 +379,49 @@ export default function ClientsPage() {
                       <p className="text-xs text-red-600">{pwError}</p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Panel de activación de plan */}
+              {planUid === c.uid && (
+                <div className="border-t border-zinc-100 bg-emerald-50/40 p-3">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <Zap size={13} className="text-emerald-600" />
+                    <p className="text-xs font-medium text-zinc-700">
+                      Activar plan para {c.email}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {PLAN_LIST.map((p) => {
+                      const isCurrent = c.plan === p.key;
+                      return (
+                        <button key={p.key}
+                          onClick={() => handleActivatePlan(c, p.key)}
+                          disabled={planBusy !== null}
+                          className={`flex flex-col items-start gap-0.5 p-2.5 rounded-lg border text-left transition disabled:opacity-50 ${
+                            isCurrent
+                              ? "border-emerald-400 bg-white"
+                              : "border-zinc-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50"
+                          }`}>
+                          <span className="text-xs font-bold text-zinc-800">{p.name}</span>
+                          <span className="text-[11px] text-zinc-500">
+                            {CURRENCY} {p.price} · {p.credits} créd.
+                          </span>
+                          {planBusy === p.key ? (
+                            <Loader2 size={12} className="animate-spin text-emerald-600 mt-0.5" />
+                          ) : isCurrent ? (
+                            <span className="text-[10px] font-semibold text-emerald-600 mt-0.5">Plan actual</span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-emerald-600 mt-0.5">Activar →</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-2">
+                    Activar otorga los créditos del plan y fija la renovación a 1 mes.
+                    El plan gratis no expira.
+                  </p>
                 </div>
               )}
             </li>

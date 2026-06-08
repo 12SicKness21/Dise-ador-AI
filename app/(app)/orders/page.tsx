@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
+import { CreditBadge } from "@/components/CreditBadge";
 import { resolveGsUrl, downloadImage as dlImg } from "@/lib/download";
 import type { Order } from "@/lib/orders";
 import {
@@ -478,11 +479,14 @@ function OrdersContent() {
           <h1 className="text-sm font-semibold text-white">Mis pedidos</h1>
           <p className="text-[11px]" style={{ color: "#C8BAA8" }}>{user?.email}</p>
         </div>
-        <a href="/upload"
-          className="flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold"
-          style={{ backgroundColor: "#3EBF85", color: "white" }}>
-          <Plus size={12} /> Nuevo
-        </a>
+        <div className="flex items-center gap-3">
+          <CreditBadge />
+          <a href="/upload"
+            className="flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-semibold"
+            style={{ backgroundColor: "#3EBF85", color: "white" }}>
+            <Plus size={12} /> Nuevo
+          </a>
+        </div>
       </header>
 
       {loading ? (

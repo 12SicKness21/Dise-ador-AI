@@ -17,6 +17,15 @@ service cloud.firestore {
              || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active != false;
     }
 
+    // ¿El usuario tiene al menos 1 crédito? Gate suave — el descuento real y
+    // atómico lo hace la Cloud Function (processUpload) vía transacción.
+    function hasCredits() {
+      let u = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(u)
+             && get(u).data.credits is number
+             && get(u).data.credits >= 1;
+    }
+
     // ─── Administradores ─────────────────────────────────────────────────────
     // get:   cada usuario puede leer SU PROPIO doc (para saber si es admin) y
     //        los admins pueden leer cualquiera.
@@ -57,6 +66,7 @@ service cloud.firestore {
 
       allow create: if request.auth != null
                     && isActive()
+                    && (isAdmin() || hasCredits())
                     && request.resource.data.userId   == request.auth.uid
                     && request.resource.data.userEmail is string
                     && request.resource.data.status   == "pending"

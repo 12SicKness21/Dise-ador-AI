@@ -32,10 +32,12 @@ import { onSnapshot, doc, Timestamp } from "firebase/firestore";
 import {
   Camera, ImagePlus, Download, X, Loader2,
   Shield, LogOut, AlertCircle, Check, Plus,
-  Lightbulb, MessageCircle, Sparkles, ShieldCheck,
+  Lightbulb, MessageCircle, Sparkles, ShieldCheck, Zap,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
+import { CreditBadge } from "@/components/CreditBadge";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import { uploadOriginal } from "@/lib/storage";
 import { createOrder } from "@/lib/orders";
 import { getActivePrompts, type Prompt } from "@/lib/prompts";
@@ -123,7 +125,7 @@ function ProcessingCard({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function UploadPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, credits } = useAuth();
   const router = useRouter();
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,6 +140,7 @@ export default function UploadPage() {
   const [progresses, setProgresses] = useState<number[]>([]);
   const [orderStates, setOrderStates] = useState<OrderState[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   useEffect(() => {
     getActivePrompts().then(setPrompts).catch(console.error);
@@ -290,7 +293,13 @@ export default function UploadPage() {
     await signOut(auth); router.replace("/login");
   }
 
-  const canGenerate = phase === "ready" && selected.length > 0 && files.length > 0;
+  // ─── Créditos ───────────────────────────────────────────────────────────
+  const totalCost = files.length * selected.length;      // imágenes a generar
+  const noCredits = !isAdmin && credits !== null && credits <= 0;
+  const insufficient = !isAdmin && credits !== null && totalCost > credits;
+
+  const canGenerate =
+    phase === "ready" && selected.length > 0 && files.length > 0 && !insufficient;
   const allDone = orderStates.length > 0 && orderStates.every(s => s.order && (s.order.status === "done" || s.order.status === "error"));
 
   return (
@@ -308,6 +317,7 @@ export default function UploadPage() {
           </div>
         </a>
         <div className="flex items-center gap-3">
+          <CreditBadge onClick={isAdmin ? undefined : () => setShowUpgrade(true)} />
           {isAdmin && (
             <a href="/admin/prompts" className="flex items-center gap-1 text-xs transition"
               style={{ color: "#A8C4D4" }}>
@@ -320,6 +330,9 @@ export default function UploadPage() {
           </button>
         </div>
       </header>
+
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />
+
 
       {/* Layout: 1 columna en móvil, 2 columnas en pantalla grande */}
       <div className="max-w-7xl mx-auto px-4 py-5">
@@ -339,7 +352,29 @@ export default function UploadPage() {
                 {files.length > 1 ? `${files.length} imágenes seleccionadas` : "Subir imagen"}
               </p>
 
-              {phase === "select" ? (
+              {phase === "select" && noCredits ? (
+                /* Sin créditos: bloquear y ofrecer actualizar plan */
+                <div className="rounded-2xl border p-6 flex flex-col items-center text-center gap-3"
+                  style={{ backgroundColor: "white", borderColor: "#F5856A66" }}>
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: "#FDF1EE" }}>
+                    <Zap size={22} style={{ color: "#F5856A" }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: "#2D2B2D" }}>
+                      Te quedaste sin créditos
+                    </p>
+                    <p className="text-xs mt-1 max-w-[240px]" style={{ color: "#B39C80" }}>
+                      Actualiza tu plan para seguir generando imágenes profesionales.
+                    </p>
+                  </div>
+                  <button onClick={() => setShowUpgrade(true)}
+                    className="flex items-center gap-1.5 h-11 px-6 rounded-full font-bold text-sm transition active:scale-[0.98] text-white"
+                    style={{ backgroundColor: "#3EBF85" }}>
+                    <Zap size={15} fill="currentColor" /> Actualizar plan
+                  </button>
+                </div>
+              ) : phase === "select" ? (
                 /* Sin imágenes: botones cámara / galería */
                 <div className="grid grid-cols-2 gap-3">
                   <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
@@ -472,15 +507,34 @@ export default function UploadPage() {
             )}
 
             {/* ── GENERAR IMAGEN ── */}
-            {phase === "ready" && (
-              <button onClick={handleGenerate} disabled={!canGenerate}
-                className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white"
-                style={{ backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8", cursor: canGenerate ? "pointer" : "not-allowed" }}>
-                {files.length > 1 || selected.length > 1
-                  ? `GENERAR ${files.length * selected.length} IMAGEN${files.length * selected.length > 1 ? "ES" : ""}`
-                  : "GENERAR IMAGEN"}
-              </button>
-            )}
+            {phase === "ready" && insufficient ? (
+              <div className="space-y-2">
+                <button onClick={() => setShowUpgrade(true)}
+                  className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white flex items-center justify-center gap-2"
+                  style={{ backgroundColor: "#3EBF85" }}>
+                  <Zap size={16} fill="currentColor" /> ACTUALIZAR PLAN
+                </button>
+                <p className="text-center text-xs" style={{ color: "#C45A42" }}>
+                  Necesitas {totalCost} crédito{totalCost > 1 ? "s" : ""} y tienes {credits ?? 0}.
+                </p>
+              </div>
+            ) : phase === "ready" ? (
+              <div className="space-y-2">
+                <button onClick={handleGenerate} disabled={!canGenerate}
+                  className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white"
+                  style={{ backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8", cursor: canGenerate ? "pointer" : "not-allowed" }}>
+                  {files.length > 1 || selected.length > 1
+                    ? `GENERAR ${totalCost} IMAGEN${totalCost > 1 ? "ES" : ""}`
+                    : "GENERAR IMAGEN"}
+                </button>
+                {totalCost > 0 && !isAdmin && (
+                  <p className="text-center text-[11px]" style={{ color: "#B39C80" }}>
+                    Cuesta {totalCost} crédito{totalCost > 1 ? "s" : ""}
+                    {credits !== null && ` · te quedan ${credits}`}
+                  </p>
+                )}
+              </div>
+            ) : null}
 
             {/* Subiendo */}
             {phase === "uploading" && (

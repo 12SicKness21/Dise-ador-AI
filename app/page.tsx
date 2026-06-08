@@ -301,7 +301,7 @@ export default function LandingPage() {
             <h1>Convierte la foto de tu celular en una imagen que <span className="hl">vende</span>.</h1>
             <p className="lede">Sube la foto de tu producto, elige un estilo y en segundos obtienes una imagen profesional lista para tu catálogo, tienda online y redes. Sin estudio, sin fotógrafo, sin Photoshop.</p>
             <div className="hero-cta">
-              <a href="/login" className="btn btn-yellow">Probar gratis</a>
+              <a href="https://wa.me/51983567826?text=Hola%20Moonkey%2021%2C%20quiero%20realizar%20pruebas%20gratuitas%20en%20Moonkey%20Studio%20IA" target="_blank" rel="noopener" className="btn btn-yellow">Probar gratis</a>
               <a href="/login" className="btn btn-login">
                 <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                 Iniciar sesión

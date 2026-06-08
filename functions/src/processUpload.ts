@@ -70,7 +70,42 @@ export const processUpload = onObjectFinalized(
         return;
       }
 
-      console.log(`Generating ${prompts.length} image(s) in parallel for order ${orderId}`);
+      // ─── Créditos: descuento atómico (evita condiciones de carrera) ───────
+      // El costo = número de imágenes a generar (una por prompt).
+      const cost = prompts.length;
+      const userEmail = (data.userEmail as string) ?? "";
+      const userRef = db.collection("users").doc(uid);
+
+      // Los administradores generan sin consumir créditos.
+      const adminSnap = userEmail
+        ? await db.collection("admins").doc(userEmail).get()
+        : null;
+      const isAdminUser = adminSnap?.exists ?? false;
+
+      if (!isAdminUser) {
+        let creditsOk = true;
+        await db.runTransaction(async (tx) => {
+          const userSnap = await tx.get(userRef);
+          const udata = userSnap.data() ?? {};
+          const credits = typeof udata.credits === "number" ? udata.credits : 0;
+          if (credits < cost) {
+            creditsOk = false;
+            return;
+          }
+          tx.update(userRef, { credits: credits - cost });
+        });
+
+        if (!creditsOk) {
+          await setOrderError(
+            db,
+            orderId,
+            "Créditos insuficientes. Actualiza tu plan para seguir generando imágenes."
+          );
+          return;
+        }
+      }
+
+      console.log(`Generating ${prompts.length} image(s) in parallel for order ${orderId} (cost: ${cost} créditos, admin: ${isAdminUser})`);
 
       // Generación en paralelo con Promise.all + system prompt fijo
       const settled: PromptResult[] = await Promise.all(
@@ -107,6 +142,14 @@ export const processUpload = onObjectFinalized(
       }
       const partialError = settled.some((r) => !r.ok);
       const allFailed = settled.every((r) => !r.ok);
+
+      // Reembolsa los créditos de las imágenes que fallaron (justo y atómico).
+      const failedCount = settled.filter((r) => !r.ok).length;
+      if (!isAdminUser && failedCount > 0) {
+        await userRef
+          .update({ credits: admin.firestore.FieldValue.increment(failedCount) })
+          .catch((e) => console.error("Error reembolsando créditos:", e));
+      }
 
       if (allFailed) {
         await setOrderError(db, orderId, "Todas las generaciones fallaron.");

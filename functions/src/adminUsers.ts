@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
+import { FREE_CREDITS } from "./lib/plans";
 
 const REGION = "southamerica-west1";
 
@@ -61,13 +62,17 @@ export const adminCreateUser = onCall(
     const db = admin.firestore();
     const now = admin.firestore.FieldValue.serverTimestamp();
 
-    // 2) Perfil del cliente (rol + estado)
+    // 2) Perfil del cliente (rol + estado + créditos del plan gratis de prueba)
     await db.collection("users").doc(uid).set({
       email,
       role,
       active: true,
       createdBy: callerEmail,
       createdAt: now,
+      plan: "free",
+      credits: FREE_CREDITS,
+      planRenewsAt: null,
+      planActivatedAt: now,
     });
 
     // 3) Si es admin, agregarlo a la colección admins (fuente de verdad del rol admin)
@@ -90,6 +95,9 @@ interface ListedUser {
   createdBy: string;
   createdAt: string | null;     // ISO — fecha de creación de la cuenta
   lastSignInAt: string | null;  // ISO — último inicio de sesión (Firebase Auth)
+  plan: string;                 // plan actual
+  credits: number;              // saldo de créditos
+  planRenewsAt: string | null;  // ISO — próxima fecha de reinicio del plan
 }
 
 /**
@@ -114,6 +122,9 @@ export const adminListUsers = onCall(
         createdBy: (data.createdBy as string) ?? "—",
         createdAt:
           data.createdAt?.toDate?.()?.toISOString?.() ?? null,
+        plan: (data.plan as string) ?? "free",
+        credits: typeof data.credits === "number" ? data.credits : 0,
+        planRenewsAt: data.planRenewsAt?.toDate?.()?.toISOString?.() ?? null,
       };
     });
 

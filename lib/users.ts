@@ -1,8 +1,9 @@
 import {
-  collection, doc, getDocs, updateDoc, setDoc, deleteDoc, serverTimestamp,
+  doc, updateDoc, setDoc, deleteDoc, serverTimestamp, Timestamp,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./firebase";
+import { PLANS, type PlanKey } from "./plans";
 
 export type Role = "client" | "admin";
 
@@ -14,6 +15,9 @@ export interface ClientProfile {
   createdBy: string;
   createdAt: Date | null;
   lastSignInAt: Date | null;
+  plan: string;
+  credits: number;
+  planRenewsAt: Date | null;
 }
 
 interface ListedUserDTO {
@@ -24,6 +28,9 @@ interface ListedUserDTO {
   createdBy: string;
   createdAt: string | null;
   lastSignInAt: string | null;
+  plan: string;
+  credits: number;
+  planRenewsAt: string | null;
 }
 
 /**
@@ -43,6 +50,9 @@ export async function getClients(): Promise<ClientProfile[]> {
       createdBy: u.createdBy ?? "—",
       createdAt: u.createdAt ? new Date(u.createdAt) : null,
       lastSignInAt: u.lastSignInAt ? new Date(u.lastSignInAt) : null,
+      plan: u.plan ?? "free",
+      credits: typeof u.credits === "number" ? u.credits : 0,
+      planRenewsAt: u.planRenewsAt ? new Date(u.planRenewsAt) : null,
     }))
     .sort((a, b) => a.email.localeCompare(b.email));
 }
@@ -91,4 +101,26 @@ export async function setClientPassword(uid: string, password: string): Promise<
     functions, "adminSetUserPassword"
   );
   await fn({ uid, password });
+}
+
+/**
+ * Activa un plan para un cliente: otorga los créditos del plan y fija la
+ * próxima fecha de reinicio a exactamente un mes en el futuro (salvo el plan
+ * gratis, que no expira). Lo hace el admin (las reglas permiten su escritura).
+ */
+export async function setClientPlan(uid: string, planKey: PlanKey): Promise<void> {
+  const plan = PLANS[planKey];
+  const updates: Record<string, unknown> = {
+    plan: planKey,
+    credits: plan.credits,
+    planActivatedAt: serverTimestamp(),
+  };
+  if (planKey === "free") {
+    updates.planRenewsAt = null;
+  } else {
+    const renews = new Date();
+    renews.setMonth(renews.getMonth() + 1);
+    updates.planRenewsAt = Timestamp.fromDate(renews);
+  }
+  await updateDoc(doc(db, "users", uid), updates);
 }
