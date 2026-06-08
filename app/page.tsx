@@ -36,6 +36,8 @@ const CSS = `
   .btn-dark:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
   .btn-wa{background:var(--spearmint);color:#06301f}
   .btn-wa:hover{background:var(--spearmint-deep);color:#fff;transform:translateY(-2px)}
+  .btn-login{background:#2E6F8F;color:#fff}
+  .btn-login:hover{background:#245A75;transform:translateY(-2px);box-shadow:0 14px 30px -14px rgba(46,111,143,.7)}
   .btn-ghost{background:transparent;color:var(--marron-ink);border:1.5px solid rgba(58,38,7,.22)}
   .btn-ghost:hover{border-color:var(--marron-ink);background:rgba(58,38,7,.04)}
   .btn-sm{height:46px;padding:0 20px;font-size:14px}
@@ -271,7 +273,7 @@ export default function LandingPage() {
           </nav>
           <div className="nav-cta">
             <a href="https://wa.me/51983567826?text=Hola%20Moonkey%2C%20quiero%20saber%20m%C3%A1s%20sobre%20Studio%20IA" target="_blank" rel="noopener" className="btn btn-wa btn-sm">WhatsApp</a>
-            <a href="/upload" className="btn btn-dark btn-sm">Probar la app</a>
+            <a href="/login" className="btn btn-login btn-sm">Iniciar sesión</a>
             <button className="burger" onClick={toggleMenu} aria-label="Menú">
               <span /><span /><span />
             </button>
@@ -282,7 +284,7 @@ export default function LandingPage() {
           <a href="#estilos" onClick={closeMenu}>Estilos</a>
           <a href="#resultados" onClick={closeMenu}>Resultados</a>
           <a href="#ventajas" onClick={closeMenu}>Ventajas</a>
-          <a href="/upload" className="btn btn-dark" onClick={closeMenu}>Probar la app</a>
+          <a href="/login" className="btn btn-login" onClick={closeMenu}>Iniciar sesión</a>
           <a href="https://wa.me/51983567826" target="_blank" rel="noopener" className="btn btn-wa" onClick={closeMenu}>Escríbenos por WhatsApp</a>
         </div>
       </header>
@@ -299,9 +301,10 @@ export default function LandingPage() {
             <h1>Convierte la foto de tu celular en una imagen que <span className="hl">vende</span>.</h1>
             <p className="lede">Sube la foto de tu producto, elige un estilo y en segundos obtienes una imagen profesional lista para tu catálogo, tienda online y redes. Sin estudio, sin fotógrafo, sin Photoshop.</p>
             <div className="hero-cta">
-              <a href="/upload" className="btn btn-yellow">Probar gratis</a>
-              <a href="https://wa.me/51983567826?text=Hola%20Moonkey%2C%20quiero%20probar%20Studio%20IA" target="_blank" rel="noopener" className="btn btn-wa">
-                {WA_ICON} Escríbenos
+              <a href="/login" className="btn btn-yellow">Probar gratis</a>
+              <a href="/login" className="btn btn-login">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                Iniciar sesión
               </a>
             </div>
             <div className="hero-meta">
@@ -471,7 +474,7 @@ export default function LandingPage() {
           <h2>Empieza a vender con mejores fotos hoy.</h2>
           <p>Prueba Moonkey Studio IA gratis y transforma tu primera foto en segundos. ¿Tienes dudas? Escríbenos por WhatsApp y te ayudamos.</p>
           <div className="cta-actions">
-            <a href="/upload" className="btn btn-dark">Probar la app</a>
+            <a href="/login" className="btn btn-login">Iniciar sesión</a>
             <a href="https://wa.me/51983567826?text=Hola%20Moonkey%2C%20quiero%20empezar%20con%20Studio%20IA" target="_blank" rel="noopener" className="btn btn-wa">
               {WA_ICON} +51 983 567 826
             </a>
@@ -508,7 +511,7 @@ export default function LandingPage() {
             <div className="foot-col">
               <h4>Contacto</h4>
               <a href="https://wa.me/51983567826" target="_blank" rel="noopener">WhatsApp · +51 983 567 826</a>
-              <a href="/upload">Probar la app</a>
+              <a href="/login">Iniciar sesión</a>
             </div>
           </div>
           <div className="foot-bottom">

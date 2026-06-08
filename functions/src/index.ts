@@ -6,4 +6,9 @@ if (admin.apps.length === 0) {
 }
 
 export { processUpload } from "./processUpload";
-export { adminCreateUser, adminDeleteUser } from "./adminUsers";
+export {
+  adminCreateUser,
+  adminDeleteUser,
+  adminListUsers,
+  adminSetUserPassword,
+} from "./adminUsers";

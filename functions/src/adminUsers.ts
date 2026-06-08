@@ -82,6 +82,104 @@ export const adminCreateUser = onCall(
   }
 );
 
+interface ListedUser {
+  uid: string;
+  email: string;
+  role: string;
+  active: boolean;
+  createdBy: string;
+  createdAt: string | null;     // ISO — fecha de creación de la cuenta
+  lastSignInAt: string | null;  // ISO — último inicio de sesión (Firebase Auth)
+}
+
+/**
+ * Lista los usuarios combinando el perfil de Firestore con la metadata de
+ * Firebase Auth (creationTime y lastSignInTime). Solo accesible por admins.
+ */
+export const adminListUsers = onCall(
+  { region: REGION },
+  async (req: CallableRequest): Promise<{ users: ListedUser[] }> => {
+    await assertAdmin(req.auth?.token?.email);
+
+    const db = admin.firestore();
+    const snap = await db.collection("users").get();
+
+    const profiles = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        uid: d.id,
+        email: (data.email as string) ?? "—",
+        role: data.role === "admin" ? "admin" : "client",
+        active: data.active !== false,
+        createdBy: (data.createdBy as string) ?? "—",
+        createdAt:
+          data.createdAt?.toDate?.()?.toISOString?.() ?? null,
+      };
+    });
+
+    // Trae metadata de Auth en lotes de 100 (límite de getUsers)
+    const authMeta = new Map<string, { created: string | null; lastSignIn: string | null }>();
+    for (let i = 0; i < profiles.length; i += 100) {
+      const batch = profiles.slice(i, i + 100).map((p) => ({ uid: p.uid }));
+      if (batch.length === 0) continue;
+      const result = await admin.auth().getUsers(batch);
+      for (const u of result.users) {
+        authMeta.set(u.uid, {
+          created: u.metadata.creationTime
+            ? new Date(u.metadata.creationTime).toISOString()
+            : null,
+          lastSignIn: u.metadata.lastSignInTime
+            ? new Date(u.metadata.lastSignInTime).toISOString()
+            : null,
+        });
+      }
+    }
+
+    const users: ListedUser[] = profiles.map((p) => {
+      const meta = authMeta.get(p.uid);
+      return {
+        ...p,
+        createdAt: p.createdAt ?? meta?.created ?? null,
+        lastSignInAt: meta?.lastSignIn ?? null,
+      };
+    });
+
+    return { users };
+  }
+);
+
+interface SetPasswordData {
+  uid?: string;
+  password?: string;
+}
+
+/** Cambia la contraseña de una cuenta desde el panel admin. */
+export const adminSetUserPassword = onCall(
+  { region: REGION },
+  async (req: CallableRequest<SetPasswordData>) => {
+    await assertAdmin(req.auth?.token?.email);
+
+    const uid = String(req.data?.uid ?? "");
+    const password = String(req.data?.password ?? "");
+
+    if (!uid) {
+      throw new HttpsError("invalid-argument", "Falta el identificador del usuario.");
+    }
+    if (password.length < 6) {
+      throw new HttpsError("invalid-argument", "La contraseña debe tener al menos 6 caracteres.");
+    }
+
+    try {
+      await admin.auth().updateUser(uid, { password });
+    } catch (err) {
+      console.error("updateUser password error:", err);
+      throw new HttpsError("internal", "No se pudo cambiar la contraseña.");
+    }
+
+    return { ok: true };
+  }
+);
+
 interface DeleteUserData {
   uid?: string;
 }

@@ -32,6 +32,7 @@ import { onSnapshot, doc, Timestamp } from "firebase/firestore";
 import {
   Camera, ImagePlus, Download, X, Loader2,
   Shield, LogOut, AlertCircle, Check, Plus,
+  Lightbulb, MessageCircle, Sparkles, ShieldCheck,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
@@ -580,6 +581,77 @@ export default function UploadPage() {
           </div>{/* fin columna derecha */}
 
         </div>
+
+        {/* ── FOOTER: tips + sugerencia ── */}
+        <footer className="mt-12 max-w-3xl mx-auto">
+          {/* Separador */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex-1 h-px" style={{ backgroundColor: "#D8CDBD" }} />
+            <span className="text-[10px] font-bold uppercase tracking-[.2em]" style={{ color: "#B39C80" }}>
+              Consejos
+            </span>
+            <div className="flex-1 h-px" style={{ backgroundColor: "#D8CDBD" }} />
+          </div>
+
+          {/* Tips típicos */}
+          <div className="grid sm:grid-cols-3 gap-4 mb-10">
+            <div className="flex flex-col items-center text-center gap-2 px-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#EBF5F9" }}>
+                <Sparkles size={18} style={{ color: "#A8C4D4" }} />
+              </div>
+              <p className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>Buena iluminación</p>
+              <p className="text-[11px] leading-relaxed" style={{ color: "#B39C80" }}>
+                Toma la foto con luz natural y un fondo simple para mejores resultados.
+              </p>
+            </div>
+            <div className="flex flex-col items-center text-center gap-2 px-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#E8F8F1" }}>
+                <Check size={18} style={{ color: "#3EBF85" }} />
+              </div>
+              <p className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>Un producto por foto</p>
+              <p className="text-[11px] leading-relaxed" style={{ color: "#B39C80" }}>
+                Sube una imagen nítida y centrada del producto que quieres transformar.
+              </p>
+            </div>
+            <div className="flex flex-col items-center text-center gap-2 px-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FDF1EE" }}>
+                <ShieldCheck size={18} style={{ color: "#F5856A" }} />
+              </div>
+              <p className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>Tus fotos son privadas</p>
+              <p className="text-[11px] leading-relaxed" style={{ color: "#B39C80" }}>
+                Solo tú puedes ver y descargar las imágenes que generas. Nadie más.
+              </p>
+            </div>
+          </div>
+
+          {/* Separador del botón de sugerencia */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-1 h-px" style={{ backgroundColor: "#D8CDBD" }} />
+            <Lightbulb size={14} style={{ color: "#B39C80" }} />
+            <div className="flex-1 h-px" style={{ backgroundColor: "#D8CDBD" }} />
+          </div>
+
+          {/* Bloque sugerencia */}
+          <div className="text-center space-y-3 pb-4">
+            <p className="text-sm font-semibold" style={{ color: "#2D2B2D" }}>
+              ¿Tienes una idea o encontraste un problema?
+            </p>
+            <p className="text-xs max-w-sm mx-auto leading-relaxed" style={{ color: "#B39C80" }}>
+              Tu opinión nos ayuda a mejorar. Escríbenos tu sugerencia y la tendremos en cuenta para las próximas versiones.
+            </p>
+            <a
+              href="https://wa.me/34600854768?text=Hola%2C%20tengo%20una%20sugerencia%20para%20Moonkey%20Studio%20IA%3A%20"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 h-11 px-6 rounded-full font-bold text-sm transition active:scale-[0.98] mt-1"
+              style={{ backgroundColor: "#3EBF85", color: "white" }}
+            >
+              <MessageCircle size={16} />
+              ENVIAR SUGERENCIA
+            </a>
+          </div>
+        </footer>
+
       </div>
     </div>
   );
