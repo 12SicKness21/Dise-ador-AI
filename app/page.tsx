@@ -303,7 +303,7 @@ export default function LandingPage() {
             <div className="hero-cta">
               <a href="https://wa.me/51983567826?text=Hola%20Moonkey%2021%2C%20quiero%20realizar%20pruebas%20gratuitas%20en%20Moonkey%20Studio%20IA" target="_blank" rel="noopener" className="btn btn-yellow">Probar gratis</a>
               <a href="/login" className="btn btn-login">
-                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" /></svg>
                 Iniciar sesión
               </a>
             </div>
@@ -347,6 +347,7 @@ export default function LandingPage() {
           <span>Fondo blanco</span><span>Modelo de pie</span><span>Catálogo</span>
           <span>Running</span><span>Estilo urbano</span><span>Fondo blanco</span>
           <span>Modelo de pie</span><span>Catálogo</span><span>Running</span><span>Estilo urbano</span>
+          <span>Estilos personalizados</span>
         </div>
       </div>
 
