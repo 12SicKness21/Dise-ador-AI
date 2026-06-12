@@ -555,7 +555,7 @@ export default function UploadPage() {
 
                 {selected.length === 0 && (
                   <p className="text-xs mt-2 text-center" style={{ color: "#B39C80" }}>
-                    Selecciona un estilo de IA o &ldquo;Foto sin fondo&rdquo; para continuar
+                    Selecciona un estilo o &ldquo;Foto sin fondo&rdquo; para continuar
                   </p>
                 )}
               </section>
