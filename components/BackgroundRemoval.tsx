@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Download, Loader2, AlertCircle, Scissors } from "lucide-react";
+import { removeBackgroundPro } from "@/lib/backgroundRemoval";
 
 /* Fondo a cuadros para previsualizar la transparencia */
 const CHECKER = {
@@ -18,44 +19,46 @@ const CHECKER = {
 type Status = "processing" | "done" | "error";
 
 /**
- * Quita el fondo de una imagen 100% en el navegador (@imgly/background-removal,
- * WASM). No sube nada a Firebase ni consume créditos. La librería se carga de
- * forma diferida (dynamic import) solo cuando este componente se monta.
+ * Quita el fondo de una imagen vía Cloud Function (remove.bg, calidad pro).
+ * Consume 1 crédito (descontado en el servidor). Muestra el PNG transparente
+ * y permite descargarlo. Reporta el resultado al padre con onSettled.
  */
-export function BackgroundRemoval({ file, index }: { file: File; index: number }) {
-  const [status, setStatus]     = useState<Status>("processing");
-  const [url, setUrl]           = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
+export function BackgroundRemoval({
+  file,
+  index,
+  onSettled,
+}: {
+  file: File;
+  index: number;
+  onSettled?: (ok: boolean) => void;
+}) {
+  const [status, setStatus] = useState<Status>("processing");
+  const [url, setUrl] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
   const startedRef = useRef(false);
-  const urlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (startedRef.current) return;   // evita doble ejecución (StrictMode)
+    if (startedRef.current) return;
     startedRef.current = true;
 
     (async () => {
       try {
-        // Carga diferida: la librería pesada solo se descarga al usarla.
-        const { removeBackground } = await import("@imgly/background-removal");
-        const blob = await removeBackground(file, {
-          output: { format: "image/png" },
-          progress: (_key: string, current: number, total: number) => {
-            if (total > 0) setProgress(Math.round((current / total) * 100));
-          },
-        });
-        const objectUrl = URL.createObjectURL(blob);
-        urlRef.current = objectUrl;
-        setUrl(objectUrl);
+        const dataUrl = await removeBackgroundPro(file);
+        setUrl(dataUrl);
         setStatus("done");
-      } catch (e) {
-        console.error("Background removal error:", e);
+        onSettled?.(true);
+      } catch (e: unknown) {
+        const msg = (e as { message?: string })?.message ?? "";
+        setErrorMsg(
+          msg.includes("insuficientes") || msg.includes("failed-precondition")
+            ? "Créditos insuficientes para quitar el fondo."
+            : "No se pudo quitar el fondo de esta imagen."
+        );
         setStatus("error");
+        onSettled?.(false);
       }
     })();
-
-    return () => {
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file]);
 
   function handleDownload() {
@@ -73,19 +76,14 @@ export function BackgroundRemoval({ file, index }: { file: File; index: number }
       <div className="relative rounded-2xl overflow-hidden aspect-square" style={CHECKER}>
         {status === "processing" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
-            style={{ backgroundColor: "rgba(245,242,236,.85)" }}>
+            style={{ backgroundColor: "rgba(245,242,236,.9)" }}>
             <div className="w-12 h-12 rounded-full flex items-center justify-center"
               style={{ backgroundColor: "#EBF5F9" }}>
               <Loader2 size={22} className="animate-spin" style={{ color: "#A8C4D4" }} />
             </div>
-            <div className="text-center px-4">
-              <p className="text-sm font-semibold" style={{ color: "#2D2B2D" }}>
-                Quitando el fondo… {progress > 0 ? `${progress}%` : ""}
-              </p>
-              <p className="text-[11px] mt-1" style={{ color: "#B39C80" }}>
-                La primera vez puede tardar (descarga el modelo).
-              </p>
-            </div>
+            <p className="text-sm font-semibold" style={{ color: "#2D2B2D" }}>
+              Quitando el fondo…
+            </p>
           </div>
         )}
 
@@ -93,9 +91,7 @@ export function BackgroundRemoval({ file, index }: { file: File; index: number }
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center"
             style={{ backgroundColor: "rgba(254,240,237,.95)" }}>
             <AlertCircle size={20} style={{ color: "#F5856A" }} />
-            <p className="text-sm" style={{ color: "#C45A42" }}>
-              No se pudo quitar el fondo de esta imagen.
-            </p>
+            <p className="text-sm" style={{ color: "#C45A42" }}>{errorMsg}</p>
           </div>
         )}
 

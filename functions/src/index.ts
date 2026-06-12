@@ -13,3 +13,4 @@ export {
   adminSetUserPassword,
 } from "./adminUsers";
 export { monthlyPlanReset } from "./scheduled";
+export { removeBackgroundPro } from "./removeBg";

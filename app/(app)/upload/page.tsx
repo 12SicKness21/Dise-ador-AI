@@ -307,18 +307,19 @@ export default function UploadPage() {
     await signOut(auth); router.replace("/login");
   }
 
-  // ─── Modo "quitar fondo" (cliente, gratis) vs estilos de IA ──────────────
+  // ─── Modo "quitar fondo" (API pro) vs estilos de IA ──────────────────────
   const isNoBgMode = selected.includes(NO_BG);
   const aiSelected = selected.filter((n) => n !== NO_BG);
 
-  // ─── Créditos (solo aplican a los estilos de IA; quitar fondo es gratis) ──
-  const totalCost = files.length * aiSelected.length;    // imágenes de IA a generar
+  // ─── Créditos — 1 por imagen, tanto IA como quitar fondo ──────────────────
+  const totalCost = isNoBgMode
+    ? files.length                       // 1 crédito por foto en modo quitar fondo
+    : files.length * aiSelected.length;  // 1 por imagen de IA generada
   const noCredits = !isAdmin && credits !== null && credits <= 0;
   const insufficient = !isAdmin && credits !== null && totalCost > credits;
 
   const canGenerate =
-    phase === "ready" && selected.length > 0 && files.length > 0 &&
-    (isNoBgMode || !insufficient);
+    phase === "ready" && selected.length > 0 && files.length > 0 && !insufficient;
   const allDone = orderStates.length > 0 && orderStates.every(s => s.order && (s.order.status === "done" || s.order.status === "error"));
 
   return (
@@ -371,20 +372,20 @@ export default function UploadPage() {
                 {files.length > 1 ? `${files.length} imágenes seleccionadas` : "Subir imagen"}
               </p>
 
-              {/* Aviso de créditos agotados (no bloquea: "quitar fondo" sigue siendo gratis) */}
+              {/* Aviso de créditos agotados */}
               {noCredits && (phase === "select" || phase === "ready") && (
                 <div className="flex items-start gap-2.5 p-3 mb-3 rounded-xl"
                   style={{ backgroundColor: "#FDF1EE", border: "1px solid #F5856A33" }}>
                   <Zap size={15} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
                   <div className="flex-1">
                     <p className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>
-                      Sin créditos de IA
+                      Te quedaste sin créditos
                     </p>
                     <p className="text-[11px] mt-0.5" style={{ color: "#B39C80" }}>
-                      Aún puedes quitar fondos gratis. Para generar con IA,{" "}
+                      Cada imagen (IA o quitar fondo) usa 1 crédito.{" "}
                       <button onClick={() => setShowUpgrade(true)}
                         className="font-semibold underline" style={{ color: "#2E9E6C" }}>
-                        actualiza tu plan
+                        Actualiza tu plan
                       </button>.
                     </p>
                   </div>
@@ -532,16 +533,16 @@ export default function UploadPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-bold uppercase tracking-wide"
-                        style={{ color: isNoBgMode ? "#2D2B2D" : "#2D2B2D" }}>
+                        style={{ color: "#2D2B2D" }}>
                         Foto sin fondo
                       </span>
                       <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-                        style={{ backgroundColor: "#E8F8F1", color: "#2E9E6C" }}>
-                        Gratis
+                        style={{ backgroundColor: "#EBF5F9", color: "#2E6F8F" }}>
+                        Calidad pro
                       </span>
                     </div>
                     <p className="text-[11px] mt-0.5" style={{ color: "#B39C80" }}>
-                      Recorta el producto con fondo transparente (PNG). No usa créditos.
+                      Recorta el producto con fondo transparente (PNG). 1 crédito por imagen.
                     </p>
                   </div>
                   {isNoBgMode && (
@@ -570,19 +571,7 @@ export default function UploadPage() {
             )}
 
             {/* ── GENERAR / QUITAR FONDO ── */}
-            {phase === "ready" && isNoBgMode ? (
-              <div className="space-y-2">
-                <button onClick={handleGenerate} disabled={!files.length}
-                  className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white flex items-center justify-center gap-2"
-                  style={{ backgroundColor: "#2D2B2D" }}>
-                  <Scissors size={16} />
-                  {files.length > 1 ? `QUITAR FONDO (${files.length})` : "QUITAR FONDO"}
-                </button>
-                <p className="text-center text-[11px]" style={{ color: "#B39C80" }}>
-                  Se procesa en tu dispositivo · gratis, sin usar créditos
-                </p>
-              </div>
-            ) : phase === "ready" && insufficient ? (
+            {phase === "ready" && insufficient ? (
               <div className="space-y-2">
                 <button onClick={() => setShowUpgrade(true)}
                   className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white flex items-center justify-center gap-2"
@@ -592,6 +581,21 @@ export default function UploadPage() {
                 <p className="text-center text-xs" style={{ color: "#C45A42" }}>
                   Necesitas {totalCost} crédito{totalCost > 1 ? "s" : ""} y tienes {credits ?? 0}.
                 </p>
+              </div>
+            ) : phase === "ready" && isNoBgMode ? (
+              <div className="space-y-2">
+                <button onClick={handleGenerate} disabled={!canGenerate}
+                  className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white flex items-center justify-center gap-2"
+                  style={{ backgroundColor: canGenerate ? "#2D2B2D" : "#C8BAA8", cursor: canGenerate ? "pointer" : "not-allowed" }}>
+                  <Scissors size={16} />
+                  {files.length > 1 ? `QUITAR FONDO (${files.length})` : "QUITAR FONDO"}
+                </button>
+                {!isAdmin && (
+                  <p className="text-center text-[11px]" style={{ color: "#B39C80" }}>
+                    Cuesta {totalCost} crédito{totalCost > 1 ? "s" : ""}
+                    {credits !== null && ` · te quedan ${credits}`}
+                  </p>
+                )}
               </div>
             ) : phase === "ready" ? (
               <div className="space-y-2">
