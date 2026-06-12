@@ -32,12 +32,13 @@ import { onSnapshot, doc, Timestamp } from "firebase/firestore";
 import {
   Camera, ImagePlus, Download, X, Loader2,
   Shield, LogOut, AlertCircle, Check, Plus,
-  Lightbulb, MessageCircle, Sparkles, ShieldCheck, Zap,
+  Lightbulb, MessageCircle, Sparkles, ShieldCheck, Zap, Scissors,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { CreditBadge } from "@/components/CreditBadge";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { BackgroundRemoval } from "@/components/BackgroundRemoval";
 import { uploadOriginal } from "@/lib/storage";
 import { createOrder } from "@/lib/orders";
 import { getActivePrompts, type Prompt } from "@/lib/prompts";
@@ -67,7 +68,11 @@ interface OrderState {
   dlLoading: Record<string, boolean>;
 }
 
-type Phase = "select" | "ready" | "uploading" | "processing" | "done" | "error";
+type Phase = "select" | "ready" | "uploading" | "processing" | "done" | "error" | "nobg";
+
+// Estilo especial cliente-side (quitar fondo). No es un prompt de Firestore:
+// se procesa en el navegador, gratis, sin Storage ni Gemini ni créditos.
+const NO_BG = "FOTO SIN FONDO";
 
 function styleImage(name: string): string {
   const slug = name
@@ -243,12 +248,21 @@ export default function UploadPage() {
 
   async function handleGenerate() {
     if (!files.length || !user || !selected.length) return;
+
+    // ── Modo "quitar fondo": 100% en el navegador, sin subir nada ──
+    if (isNoBgMode) {
+      setErrorMsg("");
+      setPhase("nobg");
+      return;
+    }
+
+    // ── Modo IA: subir a Storage → Gemini ──
     setPhase("uploading");
     setErrorMsg("");
     setProgresses(files.map(() => 0));
 
     try {
-      const selectedPrompts = prompts.filter((p) => selected.includes(p.name));
+      const selectedPrompts = prompts.filter((p) => aiSelected.includes(p.name));
       const created: OrderState[] = await Promise.all(
         files.map(async (file, i) => {
           const id = await createOrder(user.uid, user.email ?? "", selectedPrompts);
@@ -293,13 +307,18 @@ export default function UploadPage() {
     await signOut(auth); router.replace("/login");
   }
 
-  // ─── Créditos ───────────────────────────────────────────────────────────
-  const totalCost = files.length * selected.length;      // imágenes a generar
+  // ─── Modo "quitar fondo" (cliente, gratis) vs estilos de IA ──────────────
+  const isNoBgMode = selected.includes(NO_BG);
+  const aiSelected = selected.filter((n) => n !== NO_BG);
+
+  // ─── Créditos (solo aplican a los estilos de IA; quitar fondo es gratis) ──
+  const totalCost = files.length * aiSelected.length;    // imágenes de IA a generar
   const noCredits = !isAdmin && credits !== null && credits <= 0;
   const insufficient = !isAdmin && credits !== null && totalCost > credits;
 
   const canGenerate =
-    phase === "ready" && selected.length > 0 && files.length > 0 && !insufficient;
+    phase === "ready" && selected.length > 0 && files.length > 0 &&
+    (isNoBgMode || !insufficient);
   const allDone = orderStates.length > 0 && orderStates.every(s => s.order && (s.order.status === "done" || s.order.status === "error"));
 
   return (
@@ -352,29 +371,27 @@ export default function UploadPage() {
                 {files.length > 1 ? `${files.length} imágenes seleccionadas` : "Subir imagen"}
               </p>
 
-              {phase === "select" && noCredits ? (
-                /* Sin créditos: bloquear y ofrecer actualizar plan */
-                <div className="rounded-2xl border p-6 flex flex-col items-center text-center gap-3"
-                  style={{ backgroundColor: "white", borderColor: "#F5856A66" }}>
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "#FDF1EE" }}>
-                    <Zap size={22} style={{ color: "#F5856A" }} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: "#2D2B2D" }}>
-                      Te quedaste sin créditos
+              {/* Aviso de créditos agotados (no bloquea: "quitar fondo" sigue siendo gratis) */}
+              {noCredits && (phase === "select" || phase === "ready") && (
+                <div className="flex items-start gap-2.5 p-3 mb-3 rounded-xl"
+                  style={{ backgroundColor: "#FDF1EE", border: "1px solid #F5856A33" }}>
+                  <Zap size={15} className="mt-0.5 shrink-0" style={{ color: "#F5856A" }} />
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold" style={{ color: "#2D2B2D" }}>
+                      Sin créditos de IA
                     </p>
-                    <p className="text-xs mt-1 max-w-[240px]" style={{ color: "#B39C80" }}>
-                      Actualiza tu plan para seguir generando imágenes profesionales.
+                    <p className="text-[11px] mt-0.5" style={{ color: "#B39C80" }}>
+                      Aún puedes quitar fondos gratis. Para generar con IA,{" "}
+                      <button onClick={() => setShowUpgrade(true)}
+                        className="font-semibold underline" style={{ color: "#2E9E6C" }}>
+                        actualiza tu plan
+                      </button>.
                     </p>
                   </div>
-                  <button onClick={() => setShowUpgrade(true)}
-                    className="flex items-center gap-1.5 h-11 px-6 rounded-full font-bold text-sm transition active:scale-[0.98] text-white"
-                    style={{ backgroundColor: "#3EBF85" }}>
-                    <Zap size={15} fill="currentColor" /> Actualizar plan
-                  </button>
                 </div>
-              ) : phase === "select" ? (
+              )}
+
+              {phase === "select" ? (
                 /* Sin imágenes: botones cámara / galería */
                 <div className="grid grid-cols-2 gap-3">
                   <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border cursor-pointer transition min-h-[110px]"
@@ -439,12 +456,14 @@ export default function UploadPage() {
             </section>
 
             {/* ── ESTILOS — selección múltiple ── */}
-            {(phase === "ready" || phase === "uploading") && prompts.length > 0 && (
+            {(phase === "ready" || phase === "uploading") && (
               <section>
                 <p className="text-xs font-bold uppercase tracking-[.18em] mb-2.5"
                   style={{ color: "#2D2B2D" }}>
                   {selected.length === 0
                     ? "Elegir estilos"
+                    : isNoBgMode
+                    ? "Foto sin fondo seleccionado"
                     : `${selected.length} estilo${selected.length > 1 ? "s" : ""} seleccionado${selected.length > 1 ? "s" : ""}`}
                 </p>
                 <div className="grid grid-cols-3 gap-2">
@@ -453,11 +472,12 @@ export default function UploadPage() {
                     return (
                       <button
                         key={p.id}
-                        onClick={() => setSelected(prev =>
-                          prev.includes(p.name)
-                            ? prev.filter(n => n !== p.name)   // deseleccionar
-                            : [...prev, p.name]                 // seleccionar
-                        )}
+                        onClick={() => setSelected(prev => {
+                          const base = prev.filter(n => n !== NO_BG); // salir de "quitar fondo"
+                          return base.includes(p.name)
+                            ? base.filter(n => n !== p.name)          // deseleccionar
+                            : [...base, p.name];                       // seleccionar
+                        })}
                         className="flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97] relative"
                         style={{
                           backgroundColor: "white",
@@ -489,9 +509,52 @@ export default function UploadPage() {
                     );
                   })}
                 </div>
+                {/* ── Tarjeta especial: FOTO SIN FONDO (cliente, gratis) ── */}
+                <button
+                  onClick={() => setSelected(prev => prev.includes(NO_BG) ? [] : [NO_BG])}
+                  className="w-full mt-2 flex items-center gap-3 rounded-2xl p-3 transition-all active:scale-[0.99] relative text-left"
+                  style={{
+                    backgroundColor: "white",
+                    border: isNoBgMode ? "2.5px solid #2D2B2D" : "1.5px solid #C8BAA8",
+                    boxShadow: isNoBgMode ? "0 0 0 3px #2D2B2D18" : "none",
+                  }}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: "#fff",
+                      backgroundImage:
+                        "linear-gradient(45deg,#dcdcdc 25%,transparent 25%),linear-gradient(-45deg,#dcdcdc 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#dcdcdc 75%),linear-gradient(-45deg,transparent 75%,#dcdcdc 75%)",
+                      backgroundSize: "10px 10px",
+                      backgroundPosition: "0 0,0 5px,5px -5px,-5px 0",
+                      border: "1px solid #E0D6C8",
+                    }}>
+                    <Scissors size={20} style={{ color: "#2D2B2D" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold uppercase tracking-wide"
+                        style={{ color: isNoBgMode ? "#2D2B2D" : "#2D2B2D" }}>
+                        Foto sin fondo
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
+                        style={{ backgroundColor: "#E8F8F1", color: "#2E9E6C" }}>
+                        Gratis
+                      </span>
+                    </div>
+                    <p className="text-[11px] mt-0.5" style={{ color: "#B39C80" }}>
+                      Recorta el producto con fondo transparente (PNG). No usa créditos.
+                    </p>
+                  </div>
+                  {isNoBgMode && (
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "#2D2B2D" }}>
+                      <Check size={11} className="text-white" strokeWidth={3} />
+                    </div>
+                  )}
+                </button>
+
                 {selected.length === 0 && (
                   <p className="text-xs mt-2 text-center" style={{ color: "#B39C80" }}>
-                    Selecciona al menos un estilo para continuar
+                    Selecciona un estilo de IA o &ldquo;Foto sin fondo&rdquo; para continuar
                   </p>
                 )}
               </section>
@@ -506,8 +569,20 @@ export default function UploadPage() {
               </div>
             )}
 
-            {/* ── GENERAR IMAGEN ── */}
-            {phase === "ready" && insufficient ? (
+            {/* ── GENERAR / QUITAR FONDO ── */}
+            {phase === "ready" && isNoBgMode ? (
+              <div className="space-y-2">
+                <button onClick={handleGenerate} disabled={!files.length}
+                  className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white flex items-center justify-center gap-2"
+                  style={{ backgroundColor: "#2D2B2D" }}>
+                  <Scissors size={16} />
+                  {files.length > 1 ? `QUITAR FONDO (${files.length})` : "QUITAR FONDO"}
+                </button>
+                <p className="text-center text-[11px]" style={{ color: "#B39C80" }}>
+                  Se procesa en tu dispositivo · gratis, sin usar créditos
+                </p>
+              </div>
+            ) : phase === "ready" && insufficient ? (
               <div className="space-y-2">
                 <button onClick={() => setShowUpgrade(true)}
                   className="w-full h-14 rounded-full font-bold text-sm tracking-[.12em] transition active:scale-[0.98] text-white flex items-center justify-center gap-2"
@@ -570,7 +645,23 @@ export default function UploadPage() {
           {/* ── COLUMNA DERECHA: resultados ── */}
           <div className="mt-5 lg:mt-0">
 
-            {/* Resultados */}
+            {/* Resultados — quitar fondo (cliente, gratis) */}
+            {phase === "nobg" && (
+              <section>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {files.map((file, i) => (
+                    <BackgroundRemoval key={`nobg-${i}`} file={file} index={i} />
+                  ))}
+                </div>
+                <button onClick={handleClear}
+                  className="w-full text-sm py-4 text-center transition hover:opacity-70 mt-2"
+                  style={{ color: "#2D2B2D" }}>
+                  ← Nueva foto
+                </button>
+              </section>
+            )}
+
+            {/* Resultados — IA */}
             {(phase === "done" || (phase === "processing" && allDone)) && (
               <section>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
