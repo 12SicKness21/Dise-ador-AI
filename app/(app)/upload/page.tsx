@@ -464,8 +464,8 @@ export default function UploadPage() {
                   {selected.length === 0
                     ? "Elegir estilos"
                     : isNoBgMode
-                    ? "Foto sin fondo seleccionado"
-                    : `${selected.length} estilo${selected.length > 1 ? "s" : ""} seleccionado${selected.length > 1 ? "s" : ""}`}
+                      ? "Foto sin fondo seleccionado"
+                      : `${selected.length} estilo${selected.length > 1 ? "s" : ""} seleccionado${selected.length > 1 ? "s" : ""}`}
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {prompts.map((p) => {
@@ -542,7 +542,7 @@ export default function UploadPage() {
                       </span>
                     </div>
                     <p className="text-[11px] mt-0.5" style={{ color: "#B39C80" }}>
-                      Recorta el producto con fondo transparente (PNG). 1 crédito por imagen.
+                      Recorta el producto con fondo transparente (PNG).
                     </p>
                   </div>
                   {isNoBgMode && (
